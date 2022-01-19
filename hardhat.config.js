@@ -6,11 +6,6 @@ require("dotenv").config();
 
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
-require("@nomiclabs/hardhat-truffle5");
-//require("@openzeppelin/hardhat-upgrades");
-require("hardhat-typechain");
-//require("solidity-coverage");
-//require("hardhat-contract-sizer");
 
 //if (!process.env.MNEMONICS) throw new Error("MNEMONICS missing from .env file");
 if (!process.env.MUMBAI_PRIVKEY)

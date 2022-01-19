@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 //** LFG Vesting Contract */
-//** Author Xiao Shengguang : NFT Airdrop Contract 2021.9 */
+//** Author Xiao Shengguang : NFT Airdrop Contract 2022.1 */
 
 pragma solidity ^0.8.0;
 
@@ -116,7 +116,7 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
      * @return {bool} return status of token address
      *
      */
-    function setLFGToken(IERC721 _token) external onlyOwner returns (bool) {
+    function setNftToken(IERC721 _token) external onlyOwner returns (bool) {
         _nftToken = _token;
         return true;
     }
