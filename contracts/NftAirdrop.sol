@@ -34,6 +34,13 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
      */
     event DecafList(address wallet);
 
+     /**
+     *
+     * @dev this event calls when user claim the NFT
+     *
+     */
+    event ClaimDistribution(address wallet, uint256 amount);
+
     /**
      *
      * @dev whitelistPools store all active whitelist member details.
@@ -136,7 +143,8 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
 
         lfgNft.mint(whitelistPools[msg.sender].nftAmount - whitelistPools[msg.sender].distributedAmount, msg.sender);
         whitelistPools[msg.sender].distributedAmount = whitelistPools[msg.sender].nftAmount;
-
+        
+        emit ClaimDistribution(msg.sender, whitelistPools[msg.sender].nftAmount - whitelistPools[msg.sender].distributedAmount);
         return true;
     }
 
