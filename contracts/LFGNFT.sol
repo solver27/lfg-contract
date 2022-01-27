@@ -5,8 +5,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./interfaces/ILFGNFT.sol";
 
-contract LFGNFT is ERC721Enumerable, Ownable {
+contract LFGNFT is ILFGNFT, ERC721Enumerable, Ownable {
     using Strings for uint256;
 
     // Base Token URI
@@ -19,7 +20,7 @@ contract LFGNFT is ERC721Enumerable, Ownable {
     mapping(address => bool) public minters;
 
     modifier onlyMinter() {
-        require(minters(msg.sender), "NFT: Invalid minter");
+        require(minters[msg.sender], "NFT: Invalid minter");
         _;
     }
 
@@ -28,7 +29,7 @@ contract LFGNFT is ERC721Enumerable, Ownable {
     /**************************
      ***** MINT FUNCTIONS *****
      *************************/
-    function mint(uint256 _qty, address _to) external onlyMinter {
+    function mint(uint256 _qty, address _to) external override onlyMinter {
         require(totalSupply() + _qty <= MAX_SUPPLY, "NFT: out of stock");
         require(_to != address(0), "NFT: invalid address");
 
