@@ -34,12 +34,19 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
      */
     event DecafList(address wallet);
 
-     /**
+    /**
      *
      * @dev this event calls when user claim the NFT
      *
      */
     event ClaimDistribution(address wallet, uint256 amount);
+
+    /**
+     *
+     * @dev this event calls when user update the NFT contract
+     *
+     */
+    event SetLfgNft(ILFGNFT _nft);
 
     /**
      *
@@ -58,6 +65,12 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
 
     ILFGNFT public lfgNft;
 
+    constructor(
+        ILFGNFT _nft
+    ) {
+        lfgNft = _nft;
+    }
+
     /**
      *
      * @dev set nft address for contract
@@ -68,6 +81,7 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
      */
     function setNftToken(ILFGNFT _nft) external onlyOwner returns (bool) {
         lfgNft = _nft;
+        emit SetLfgNft(_nft);
         return true;
     }
 
@@ -100,21 +114,6 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
         }
 
         return true;
-    }
-
-    /**
-     *
-     * @dev set the address as whitelist user address
-     *
-     * @param {address} address of the user
-     *
-     * @return {Whitelist} return whitelist instance
-     *
-     */
-    function getWhitelist(address _wallet) external view returns (WhitelistInfo memory) {
-        require(whitelistPools[_wallet].wallet == _wallet, "Whitelist is not existing");
-
-        return whitelistPools[_wallet];
     }
 
     /**
