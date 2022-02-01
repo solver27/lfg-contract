@@ -39,7 +39,12 @@ describe("NftAirdrop", function () {
     expect(new BN(whitelistInfo.distributedAmount).toString()).to.equal("0");
 
     await NftAirdrop.claimDistribution({from: accounts[1]});
-    expect(new BN(whitelistInfo.nftAmount).toString()).to.equal(airDropNftAmount.toString());
-    expect(new BN(whitelistInfo.distributedAmount).toString()).to.equal(airDropNftAmount.toString());
+    const whitelistInfoAfter = await NftAirdrop.whitelistPools(accounts[1]);
+    expect(new BN(whitelistInfoAfter.nftAmount).toString()).to.equal(airDropNftAmount.toString());
+    expect(new BN(whitelistInfoAfter.distributedAmount).toString()).to.equal(airDropNftAmount.toString());
+
+    const nftBalance = await LFGNFT.balanceOf(accounts[1]);
+    console.log("nftBalance ", nftBalance);
+    expect(new BN(nftBalance).toString()).to.equal(airDropNftAmount.toString());
   });
 });

@@ -34,7 +34,7 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, Ownable {
         require(_to != address(0), "NFT: invalid address");
 
         for (uint256 i = 0; i < _qty; i++) {
-            _safeMint(msg.sender, totalSupply() + 1);
+            _safeMint(_to, totalSupply() + 1);
         }
     }
 
