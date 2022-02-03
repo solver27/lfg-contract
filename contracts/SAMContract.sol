@@ -48,7 +48,6 @@ contract SAMContract is Ownable, ReentrancyGuard {
     }
 
     function addListing(address _seller, address _hostContract, uint _tokenId, uint _startPrice, uint _buyNowPrice, uint _duration) external {
-        require (msg.sender == operator, "Only operator dApp can create offerings");
         bytes32 listingId = keccak256(abi.encodePacked(listingNonce, _hostContract, _tokenId));
         nftListing[listingId].seller = _seller;
         nftListing[listingId].hostContract = _hostContract;
