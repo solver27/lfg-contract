@@ -6,6 +6,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -25,28 +26,58 @@ contract NftEscrow is Ownable, ReentrancyGuard {
 
     mapping (bytes32 => nftItem) nftItems;
 
-    constructor (address _owner) {
+    mapping (address => uint256) addrTokens;
+
+    uint256 public totalEscrowAmount;
+
+    IERC20 public lfgToken;
+
+    address public operator;
+
+    constructor (address _owner, IERC20 _token) {
         _transferOwnership(_owner);
+        lfgToken = _token;
     }
 
-    function depositNft(address _hostContract, uint _tokenId) external {
-        ERC721 nftContract = ERC721(_hostContract);
-        nftContract.transferFrom(msg.sender, address(this), _tokenId);
-
-        bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
-        nftItems[itemId] = nftItem({owner: msg.sender, hostContract : _hostContract, tokenId : _tokenId });
-
-        emit NftDeposit(msg.sender, _hostContract, _tokenId);
+    function setOperator(address _operator) external onlyOwner {
+        operator = _operator;
     }
 
-    function withdrawNft(address _hostContract, uint _tokenId) external {
+    modifier onlyOperator() {
+        require(operator == msg.sender, "Only operator can do this operation");
+        _;
+    }
+
+    function depositNft(address from, address _hostContract, uint _tokenId) external nonReentrant onlyOperator {
+        ERC721 nftContract = ERC721(_hostContract);
+        nftContract.transferFrom(from, address(this), _tokenId);
+
         bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
-        require(nftItems[itemId].owner == msg.sender, "The NFT item doesn't belong to the caller");
+        nftItems[itemId] = nftItem({owner: from, hostContract : _hostContract, tokenId : _tokenId });
+
+        emit NftDeposit(from, _hostContract, _tokenId);
+    }
+
+    function withdrawNft(address to, address _hostContract, uint _tokenId) external nonReentrant onlyOperator {
+        bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
+        require(nftItems[itemId].owner == to, "The NFT item doesn't belong to the caller");
 
         ERC721 nftContract = ERC721(_hostContract);
-        nftContract.transferFrom(address(this), msg.sender, _tokenId);
+        nftContract.transferFrom(address(this), to, _tokenId);
         delete nftItems[itemId];
 
-        emit NftWithdraw(msg.sender, _hostContract, _tokenId);
+        emit NftWithdraw(to, _hostContract, _tokenId);
+    }
+
+    function depositToken(address addr, uint256 _amount) external nonReentrant onlyOperator {
+        lfgToken.transferFrom(addr, address(this), _amount);
+        addrTokens[addr] += _amount;
+        totalEscrowAmount += _amount;
+    }
+
+    function withdrawToken(address addr, uint256 _amount) external nonReentrant onlyOperator {
+        require(addrTokens[addr] >= _amount);
+        lfgToken.transfer(addr, _amount);
+        totalEscrowAmount -= _amount;
     }
 }
