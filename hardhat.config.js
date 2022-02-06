@@ -6,6 +6,9 @@ require("dotenv").config();
 
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
+require("@nomiclabs/hardhat-ethers");
+require("@nomiclabs/hardhat-truffle5");
+require("hardhat-typechain");
 
 //if (!process.env.MNEMONICS) throw new Error("MNEMONICS missing from .env file");
 if (!process.env.MUMBAI_PRIVKEY)
@@ -16,8 +19,12 @@ if (!process.env.MUMBAI_PRIVKEY)
 //const mnemonics = process.env.MNEMONICS;
 
 module.exports = {
-  defaultNetwork: "bsctest",
+  defaultNetwork: "localhost",
   networks: {
+      localhost: {
+        url: `http://127.0.0.1:8545`,
+    },
+
     // hardhat: {
     //   forking: {
     //     url: `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`,

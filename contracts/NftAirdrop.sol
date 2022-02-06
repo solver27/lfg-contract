@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-//** LFG Vesting Contract */
+//** NFT Airdrop Contract */
 //** Author Xiao Shengguang : NFT Airdrop Contract 2022.1 */
 
 pragma solidity ^0.8.0;
@@ -9,10 +9,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "./interfaces/ILFGNFT.sol";
 
-contract NftAirdrop is Ownable, ReentrancyGuard {
-    using SafeMath for uint256;
-    //using SafeERC20 for IERC20;
+contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
 
     struct WhitelistInfo {
         address wallet;
@@ -37,6 +37,20 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
 
     /**
      *
+     * @dev this event calls when user claim the NFT
+     *
+     */
+    event ClaimDistribution(address wallet, uint256 amount);
+
+    /**
+     *
+     * @dev this event calls when user update the NFT contract
+     *
+     */
+    event SetLfgNft(ILFGNFT _nft);
+
+    /**
+     *
      * @dev whitelistPools store all active whitelist member details.
      *
      */
@@ -50,7 +64,27 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
     address [] public whitelistAddresses;
 
 
-    IERC721 private _nftToken;
+    ILFGNFT public lfgNft;
+
+    constructor(
+        ILFGNFT _nft
+    ) {
+        lfgNft = _nft;
+    }
+
+    /**
+     *
+     * @dev set nft address for contract
+     *
+     * @param {_token} address of IERC20 instance
+     * @return {bool} return status of token address
+     *
+     */
+    function setNftToken(ILFGNFT _nft) external onlyOwner returns (bool) {
+        lfgNft = _nft;
+        emit SetLfgNft(_nft);
+        return true;
+    }
 
     /**
      *
@@ -70,6 +104,7 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
         for (uint256 i = 0; i < _wallet.length; i++) {
             require(whitelistPools[_wallet[i]].wallet != _wallet[i], "Whitelist already available");
 
+            whitelistPools[_wallet[i]].active = true;
             whitelistPools[_wallet[i]].wallet = _wallet[i];
             whitelistPools[_wallet[i]].nftAmount = _nftAmount[i];
             whitelistPools[_wallet[i]].distributedAmount = 0;
@@ -80,21 +115,6 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
         }
 
         return true;
-    }
-
-    /**
-     *
-     * @dev set the address as whitelist user address
-     *
-     * @param {address} address of the user
-     *
-     * @return {Whitelist} return whitelist instance
-     *
-     */
-    function getWhitelist(address _wallet) external view returns (WhitelistInfo memory) {
-        require(whitelistPools[_wallet].wallet == _wallet, "Whitelist is not existing");
-
-        return whitelistPools[_wallet];
     }
 
     /**
@@ -110,30 +130,6 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
 
     /**
      *
-     * @dev set LFG token address for contract
-     *
-     * @param {_token} address of IERC20 instance
-     * @return {bool} return status of token address
-     *
-     */
-    function setNftToken(IERC721 _token) external onlyOwner returns (bool) {
-        _nftToken = _token;
-        return true;
-    }
-
-    /**
-     *
-     * @dev getter function for deployed nft token address
-     *
-     * @return {address} return deployment address of lfg token
-     *
-     */
-    function getNftToken() external view returns (address) {
-        return address(_nftToken);
-    }
-
-    /**
-     *
      * @dev distribute the token to the investors
      *
      * @param {address} wallet address of the investor
@@ -145,8 +141,10 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
         require(whitelistPools[msg.sender].active, "User is not in whitelist");
         require(whitelistPools[msg.sender].distributedAmount < whitelistPools[msg.sender].nftAmount, "All nft has been claimed");
 
-        // TODO: transfer NFT from nft collection contract to user
-
+        lfgNft.mint(whitelistPools[msg.sender].nftAmount - whitelistPools[msg.sender].distributedAmount, msg.sender);
+        whitelistPools[msg.sender].distributedAmount = whitelistPools[msg.sender].nftAmount;
+        
+        emit ClaimDistribution(msg.sender, whitelistPools[msg.sender].nftAmount - whitelistPools[msg.sender].distributedAmount);
         return true;
     }
 
@@ -161,5 +159,12 @@ contract NftAirdrop is Ownable, ReentrancyGuard {
         }
 
         return true;
+    }
+
+    /**
+     * Always returns `IERC721Receiver.onERC721Received.selector`.
+     */
+    function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }
