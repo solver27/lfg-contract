@@ -88,11 +88,14 @@ contract NftEscrow is Ownable, ReentrancyGuard, IERC721Receiver {
         totalEscrowAmount += _amount;
     }
 
-    function claimToken(address addr) external nonReentrant onlyOperator {
+    function claimToken(address addr) external nonReentrant onlyOperator returns (uint256) {
         require(addrTokens[addr].claimableAmount > 0);
         lfgToken.transfer(addr, addrTokens[addr].claimableAmount);
+        uint256 claimedAmount = addrTokens[addr].claimableAmount;
         totalEscrowAmount -= addrTokens[addr].claimableAmount;
         addrTokens[addr].claimableAmount = 0;
+
+        return claimedAmount;
     }
 
     function transferToken(address from, address to, uint256 _amount) external nonReentrant onlyOperator {

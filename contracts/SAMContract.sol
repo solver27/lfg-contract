@@ -20,6 +20,12 @@ contract SAMContract is Ownable, ReentrancyGuard {
 
     event BiddingPlaced(bytes32 indexed biddingId, bytes32 listingId, uint price);
 
+    event BuyNow(bytes32 indexed listingId, address indexed buyer, uint price);
+
+    event ClaimNFT(bytes32 indexed listingId, bytes32 indexed biddingId, address indexed buyer);
+
+    event ClaimToken(address indexed addr, uint amount);
+
     struct listing {
         bytes32 id;             // The listing id
         address seller;         // The owner of the NFT who want to sell it
@@ -153,6 +159,8 @@ contract SAMContract is Ownable, ReentrancyGuard {
         nftEscrow.transferToken(msg.sender, lst.seller, lst.buyNowPrice);
         nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
+        emit BuyNow(listingId, msg.sender, lst.buyNowPrice);
+
         // Refund the failed bidder
         for (uint i = 0; i < lst.biddingIds.length; ++i) {
             bytes32 tmpId = lst.biddingIds[i];
@@ -170,7 +178,9 @@ contract SAMContract is Ownable, ReentrancyGuard {
     }
 
     function claimToken() external nonReentrant {
-        nftEscrow.claimToken(msg.sender);
+        uint256 claimedAmount = nftEscrow.claimToken(msg.sender);
+
+        emit ClaimToken(msg.sender, claimedAmount);
     }
 
     function claimNft(bytes32 biddingId) external nonReentrant {
@@ -188,6 +198,8 @@ contract SAMContract is Ownable, ReentrancyGuard {
 
         nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
         nftEscrow.transferToken(msg.sender, lst.seller, bid.price);
+
+        emit ClaimNFT(lst.id, biddingId, msg.sender);
 
         // Refund the failed bidder
         for (uint i = 0; i < lst.biddingIds.length; ++i) {
