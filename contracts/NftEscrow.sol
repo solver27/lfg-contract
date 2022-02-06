@@ -10,9 +10,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract NftEscrow is Ownable, ReentrancyGuard {
+contract NftEscrow is Ownable, ReentrancyGuard, IERC721Receiver {
 
     event NftDeposit(address indexed sender, address indexed hostContract, uint tokenId);
 
@@ -24,9 +24,14 @@ contract NftEscrow is Ownable, ReentrancyGuard {
         uint tokenId;           // The NFT token ID
     }
 
-    mapping (bytes32 => nftItem) nftItems;
+    mapping (bytes32 => nftItem) public nftItems;
 
-    mapping (address => uint256) addrTokens;
+    struct userToken {
+        uint256 lockedAmount;
+        uint256 claimableAmount;
+    }
+
+    mapping (address => userToken) public addrTokens;
 
     uint256 public totalEscrowAmount;
 
@@ -50,7 +55,7 @@ contract NftEscrow is Ownable, ReentrancyGuard {
 
     function depositNft(address from, address _hostContract, uint _tokenId) external nonReentrant onlyOperator {
         ERC721 nftContract = ERC721(_hostContract);
-        nftContract.transferFrom(from, address(this), _tokenId);
+        nftContract.safeTransferFrom(from, address(this), _tokenId);
 
         bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
         nftItems[itemId] = nftItem({owner: from, hostContract : _hostContract, tokenId : _tokenId });
@@ -63,21 +68,43 @@ contract NftEscrow is Ownable, ReentrancyGuard {
         require(nftItems[itemId].owner == to, "The NFT item doesn't belong to the caller");
 
         ERC721 nftContract = ERC721(_hostContract);
-        nftContract.transferFrom(address(this), to, _tokenId);
+        nftContract.safeTransferFrom(address(this), to, _tokenId);
         delete nftItems[itemId];
 
         emit NftWithdraw(to, _hostContract, _tokenId);
     }
 
+    function transferNft(address to, address _hostContract, uint _tokenId) external nonReentrant onlyOperator {
+        bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
+
+        ERC721 nftContract = ERC721(_hostContract);
+        nftContract.safeTransferFrom(address(this), to, _tokenId);
+        delete nftItems[itemId];
+    }
+
     function depositToken(address addr, uint256 _amount) external nonReentrant onlyOperator {
         lfgToken.transferFrom(addr, address(this), _amount);
-        addrTokens[addr] += _amount;
+        addrTokens[addr].lockedAmount += _amount;
         totalEscrowAmount += _amount;
     }
 
-    function withdrawToken(address addr, uint256 _amount) external nonReentrant onlyOperator {
-        require(addrTokens[addr] >= _amount);
-        lfgToken.transfer(addr, _amount);
-        totalEscrowAmount -= _amount;
+    function claimToken(address addr) external nonReentrant onlyOperator {
+        require(addrTokens[addr].claimableAmount > 0);
+        lfgToken.transfer(addr, addrTokens[addr].claimableAmount);
+        totalEscrowAmount -= addrTokens[addr].claimableAmount;
+        addrTokens[addr].claimableAmount = 0;
+    }
+
+    function transferToken(address from, address to, uint256 _amount) external nonReentrant onlyOperator {
+        require(addrTokens[from].lockedAmount >= _amount, "The locked amount is not enough");
+        addrTokens[to].claimableAmount += _amount;
+        addrTokens[from].lockedAmount -= _amount;
+    }
+
+    /**
+     * Always returns `IERC721Receiver.onERC721Received.selector`.
+     */
+    function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }

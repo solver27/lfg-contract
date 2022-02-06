@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "./NftEscrow.sol";
 
 contract SAMContract is Ownable, ReentrancyGuard {
 
@@ -20,6 +21,7 @@ contract SAMContract is Ownable, ReentrancyGuard {
     event BiddingPlaced(bytes32 indexed biddingId, bytes32 listingId, uint price);
 
     struct listing {
+        bytes32 id;             // The listing id
         address seller;         // The owner of the NFT who want to sell it
         address hostContract;   // The source of the contract
         uint tokenId;           // The NFT token ID
@@ -31,35 +33,38 @@ contract SAMContract is Ownable, ReentrancyGuard {
     }
 
     struct bidding {
+        bytes32 id;             // The bidding id
         address bidder;         // User who submit the bidding
+        bytes32 listingId;      // The target listing id
         uint price;             // The bidder price
         uint timestamp;         // The timestamp user create the bidding
     }
 
+    NftEscrow public nftEscrow;
+
     address [] userAddresses;
 
-    mapping (bytes32 => listing) listingRegistry;   // The mapping of listing Id to listing details
+    mapping (bytes32 => listing) public listingRegistry;   // The mapping of listing Id to listing details
 
-    mapping (address => bytes32[]) addrListingIds;  // The mapping of the listings of address
+    mapping (address => bytes32[]) public addrListingIds;  // The mapping of the listings of address
 
-    mapping (bytes32 => bidding) biddingRegistry;   // The mapping of bidding Id to bidding details
+    mapping (bytes32 => bidding) public biddingRegistry;   // The mapping of bidding Id to bidding details
 
-    mapping (address => bytes32[]) addrBiddingIds;  // The mapping of the bidding of address
+    mapping (address => bytes32[]) public addrBiddingIds;  // The mapping of the bidding of address
 
     uint operationNonce;
 
-    IERC20 public _lfgToken;
-
-    constructor (address _owner, IERC20 _token) {
+    constructor (address _owner, NftEscrow _nftEscrow) {
         _transferOwnership(_owner);
-        _lfgToken = _token;
+        nftEscrow = _nftEscrow;
     }
 
-    function addListing(address _hostContract, uint _tokenId, uint _startPrice, uint _buyNowPrice, uint _duration) external {
-        // TODO: transfer the NFT to Escrow contract
+    function addListing(address _hostContract, uint _tokenId, uint _startPrice, uint _buyNowPrice, uint _duration) external nonReentrant {
+        nftEscrow.depositNft(msg.sender, _hostContract, _tokenId);
 
         bytes32 listingId = keccak256(abi.encodePacked(operationNonce, _hostContract, _tokenId));
 
+        listingRegistry[listingId].id = listingId;
         listingRegistry[listingId].seller = msg.sender;
         listingRegistry[listingId].hostContract = _hostContract;
         listingRegistry[listingId].tokenId = _tokenId;
@@ -88,18 +93,29 @@ contract SAMContract is Ownable, ReentrancyGuard {
         return resultlistings;
     }
 
-    function placeBid(bytes32 listingId, uint price) external {
+    function placeBid(bytes32 listingId, uint price) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
-        require(lst.timestamp + lst.auctionDuration > block.timestamp, "The listing is expired");
+        require(lst.timestamp + lst.auctionDuration > block.timestamp, "The bidding period haven't complete");
 
-        require(price > lst.auctionStartPrice, "Bid price should larger than the auction start price");
+        uint minPrice = lst.auctionStartPrice;
+        // The last element is the current highest price
+        if (lst.biddingIds.length > 0) {
+            bytes32 lastBiddingId = lst.biddingIds[lst.biddingIds.length - 1];
+            minPrice = biddingRegistry[lastBiddingId].price;
+        }
 
-        // TODO: transfer the price amount of LFG token to Escrow contract
+        require(price > minPrice, "Bid price too low");
+
+        nftEscrow.depositToken(msg.sender, price);
 
         bytes32 biddingId = keccak256(abi.encodePacked(operationNonce, lst.hostContract, lst.tokenId));
+        biddingRegistry[biddingId].id = biddingId;
         biddingRegistry[biddingId].bidder = msg.sender;
+        biddingRegistry[biddingId].listingId = listingId;
         biddingRegistry[biddingId].price = price;
         biddingRegistry[biddingId].timestamp = block.timestamp;
+        
+        operationNonce++;
 
         lst.biddingIds.push(biddingId);
 
@@ -126,5 +142,59 @@ contract SAMContract is Ownable, ReentrancyGuard {
             biddings[i] = biddingRegistry[biddingId];
         }
         return biddings;
+    }
+
+    function buyNow(bytes32 listingId) external nonReentrant 
+    {
+        listing storage lst = listingRegistry[listingId];
+        require(lst.timestamp + lst.auctionDuration > block.timestamp, "The listing is expired");
+
+        nftEscrow.depositToken(msg.sender, lst.buyNowPrice);
+        nftEscrow.transferToken(msg.sender, lst.seller, lst.buyNowPrice);
+        nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
+
+        // Refund the failed bidder
+        for (uint i = 0; i < lst.biddingIds.length; ++i) {
+            bytes32 tmpId = lst.biddingIds[i];
+            nftEscrow.transferToken(biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].price);
+        }
+
+        uint length = addrListingIds[lst.seller].length;
+        for (uint index = 0; index < length; ++index) {
+            if (addrListingIds[lst.seller][index] == listingId && index != length - 1) {
+                addrListingIds[lst.seller][index] = addrListingIds[lst.seller][length - 1];
+            }
+        }
+        addrListingIds[lst.seller].pop();
+        delete listingRegistry[listingId];
+    }
+
+    function claimToken() external nonReentrant {
+        nftEscrow.claimToken(msg.sender);
+    }
+
+    function claimNft(bytes32 biddingId) external nonReentrant {
+        bidding storage bid = biddingRegistry[biddingId];
+        require(bid.bidder == msg.sender, "Only bidder can claim NFT");
+
+        listing storage lst = listingRegistry[bid.listingId];
+        require(lst.timestamp + lst.auctionDuration < block.timestamp, "The bidding period haven't complete");
+        for (uint i = 0; i < lst.biddingIds.length; ++i) {
+            bytes32 tmpId = lst.biddingIds[i];
+            if (biddingRegistry[tmpId].price > bid.price) {
+                require(false, "The bidding is not the highest price");
+            }
+        }
+
+        nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
+        nftEscrow.transferToken(msg.sender, lst.seller, bid.price);
+
+        // Refund the failed bidder
+        for (uint i = 0; i < lst.biddingIds.length; ++i) {
+            bytes32 tmpId = lst.biddingIds[i];
+            if (tmpId != biddingId) {
+                nftEscrow.transferToken(biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].price);
+            }
+        }
     }
 }
