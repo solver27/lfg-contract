@@ -167,13 +167,21 @@ contract SAMContract is Ownable, ReentrancyGuard {
             nftEscrow.transferToken(biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].price);
         }
 
-        uint length = addrListingIds[lst.seller].length;
+        _removeListing(listingId, lst.seller);
+    }
+
+    function _removeListing(bytes32 listingId, address seller) private {
+        uint length = addrListingIds[seller].length;
         for (uint index = 0; index < length; ++index) {
-            if (addrListingIds[lst.seller][index] == listingId && index != length - 1) {
-                addrListingIds[lst.seller][index] = addrListingIds[lst.seller][length - 1];
+            // Move the last element to the index need to remove
+            if (addrListingIds[seller][index] == listingId && index != length - 1) {
+                addrListingIds[seller][index] = addrListingIds[seller][length - 1];
             }
         }
-        addrListingIds[lst.seller].pop();
+        // Remove the last element
+        addrListingIds[seller].pop();
+
+        // Delete from the mapping
         delete listingRegistry[listingId];
     }
 
@@ -208,5 +216,7 @@ contract SAMContract is Ownable, ReentrancyGuard {
                 nftEscrow.transferToken(biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].price);
             }
         }
+
+        _removeListing(lst.id, lst.seller);
     }
 }
