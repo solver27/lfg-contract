@@ -219,4 +219,16 @@ contract SAMContract is Ownable, ReentrancyGuard {
 
         _removeListing(lst.id, lst.seller);
     }
+
+    function removeListing(bytes32 listingId) external nonReentrant {
+        listing storage lst = listingRegistry[listingId];
+        require(lst.timestamp + lst.auctionDuration < block.timestamp, "The listing haven't expired");
+        require(lst.seller == msg.sender, "Only seller can remove the listing");
+        require(lst.biddingIds.length == 0, "Already received bidding, cannot close it");
+
+        // return the NFT to seller
+        nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
+
+        _removeListing(lst.id, lst.seller);
+    }
 }

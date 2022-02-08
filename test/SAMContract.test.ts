@@ -186,4 +186,45 @@ describe("SAMContract", function () {
     console.log("Balance of account 3 ", balanceOfAccount3.toString());
     assert.equal(balanceOfAccount3.toString(), testDepositAmount);
   });
+
+  it("test remove listing ", async function () {
+    let supply = await LFGNFT.totalSupply();
+    console.log("supply ", supply.toString());
+
+    await LFGNFT.mint(2, accounts[2], {from: minter});
+
+    supply = await LFGNFT.totalSupply();
+    console.log("supply ", supply.toString());
+    let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
+
+    await LFGNFT.approve(NftEscrow.address, account2TokenIds[0], {from: accounts[2]});
+
+    const operatorResult = await NftEscrow.operator();
+    console.log("get operator: ", operatorResult.toString());
+
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "10000000", "20000000", 3600 * 24, {from:accounts[2]});
+
+    let listingResult = await SAMContract.listingOfAddr(accounts[2]);
+    console.log("getListingResult ", JSON.stringify(listingResult));
+    assert.equal(listingResult.length, 1);
+    let listingId = listingResult[0][0];
+
+    await expect(
+        SAMContract.removeListing(listingId, {from: accounts[2]})
+    ).to.be.revertedWith("The listing haven't expired");
+
+    const today = Math.round(new Date() / 1000);
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [today + 3601 * 48]);
+    await hre.network.provider.send("evm_mine");
+
+    await expect(
+      SAMContract.removeListing(listingId, {from: accounts[1]})
+      ).to.be.revertedWith("Only seller can remove the listing");
+
+    await SAMContract.removeListing(listingId, {from: accounts[2]});
+    listingResult = await SAMContract.listingOfAddr(accounts[2]);
+    console.log("getListingResult ", JSON.stringify(listingResult));
+    assert.equal(listingResult.length, 0);
+  });
 });
