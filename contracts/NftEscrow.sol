@@ -39,9 +39,9 @@ contract NftEscrow is Ownable, ReentrancyGuard, IERC721Receiver {
 
     address public operator;
 
-    constructor (address _owner, IERC20 _token) {
+    constructor (address _owner, IERC20 _lfgToken) {
         _transferOwnership(_owner);
-        lfgToken = _token;
+        lfgToken = _lfgToken;
     }
 
     function setOperator(address _operator) external onlyOwner {

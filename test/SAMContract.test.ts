@@ -16,11 +16,12 @@ describe("SAMContract", function () {
   let NftEscrow = null;
   let SAMContract = null;
   let accounts = ["", "", "", "", "", "", ""],
-    minter;
+    minter, burnAddress, revenueAddress;
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5], accounts[6], minter] = await web3.eth.getAccounts();
+      [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5], accounts[6], minter, burnAddress, revenueAddress]
+         = await web3.eth.getAccounts();
       LFGToken = await LFGTokenArt.new("LFG Token",
       "LFG",
       "1000000000000000000000000000", minter);
@@ -28,7 +29,7 @@ describe("SAMContract", function () {
       LFGNFT = await LFGNFTArt.new();
       NftEscrow = await NftEscrowArt.new(minter, LFGToken.address);
 
-      SAMContract = await SAMContractArt.new(minter, NftEscrow.address);
+      SAMContract = await SAMContractArt.new(minter, NftEscrow.address, LFGToken.address, burnAddress);
 
       await LFGNFT.setMinter(minter, true);
 
@@ -72,6 +73,8 @@ describe("SAMContract", function () {
     console.log("account 1 balance ", balance.toString());
 
     await LFGToken.approve(NftEscrow.address, testDepositAmount, {from: accounts[1]});
+    await LFGToken.approve(SAMContract.address, testDepositAmount, {from: accounts[1]}); // to charge fees
+
     await SAMContract.buyNow(listingId, {from: accounts[1]});
 
     let account1TokenIds = await LFGNFT.tokensOfOwner(accounts[1]);
@@ -102,6 +105,10 @@ describe("SAMContract", function () {
 
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
+
+    let burnAmount = await LFGToken.balanceOf(burnAddress);
+    console.log("Burn amount ", burnAmount.toString());
+    assert.equal(burnAmount.toString(), "250000");
   });
 
   it("test auction and bidding", async function () {
@@ -132,20 +139,21 @@ describe("SAMContract", function () {
     for (let accountId = 3; accountId < 6; ++accountId) {
         await LFGToken.transfer(accounts[accountId], testDepositAmount);
         await LFGToken.approve(NftEscrow.address, testDepositAmount, {from: accounts[accountId]});
+        await LFGToken.approve(SAMContract.address, testDepositAmount, {from: accounts[accountId]}); // to charge fees
     }
 
     await expect(
         SAMContract.placeBid(listingId, "10000000", { from: accounts[3]})
       ).to.be.revertedWith("Bid price too low");
 
-    await SAMContract.placeBid(listingId, "10000010", { from: accounts[3]});
+    await SAMContract.placeBid(listingId, "11000000", { from: accounts[3]});
 
     await expect(
-        SAMContract.placeBid(listingId, "10000010", { from: accounts[4]})
+        SAMContract.placeBid(listingId, "11000000", { from: accounts[4]})
       ).to.be.revertedWith("Bid price too low");
 
-    await SAMContract.placeBid(listingId, "10000020", { from: accounts[4]});
-    await SAMContract.placeBid(listingId, "10000050", { from: accounts[5]});
+    await SAMContract.placeBid(listingId, "12000000", { from: accounts[4]});
+    await SAMContract.placeBid(listingId, "15000000", { from: accounts[5]});
 
     const biddings = await SAMContract.biddingOfListing(listingId);
     console.log("All biddings: ", JSON.stringify(biddings));
@@ -168,23 +176,41 @@ describe("SAMContract", function () {
 
     let account2Tokens = await NftEscrow.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(account2Tokens["claimableAmount"], "10000050");
+    assert.equal(account2Tokens["claimableAmount"], "15000000");
 
     // Check the refunding bidding to account 3.
     let account3Tokens = await NftEscrow.addrTokens(accounts[3]);
     console.log("Escrow tokens of account 3 ", JSON.stringify(account3Tokens));
-    assert.equal(account3Tokens["claimableAmount"], "10000010");
+    assert.equal(account3Tokens["claimableAmount"], "11000000");
 
     await SAMContract.claimToken({from: accounts[2]});
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.equal(balanceOfAccount2.toString(), "30000050");
+    assert.equal(balanceOfAccount2.toString(), "35000000");
 
     // Account 3 claim back his bidding
     await SAMContract.claimToken({from: accounts[3]});
     let balanceOfAccount3 = await LFGToken.balanceOf(accounts[3]);
     console.log("Balance of account 3 ", balanceOfAccount3.toString());
     assert.equal(balanceOfAccount3.toString(), testDepositAmount);
+
+    let burnAmount = await LFGToken.balanceOf(burnAddress);
+    console.log("Burn amount ", burnAmount.toString());
+    assert.equal(burnAmount.toString(), "437500");
+
+    let accRevenueAmount = await SAMContract.accRevenueAmount();
+    let unsweepRevenueAmount = await SAMContract.unsweepRevenueAmount();
+    assert.equal(accRevenueAmount.toString(), "437500");
+    assert.equal(unsweepRevenueAmount.toString(), "437500");
+
+    // Revenue sweep
+    await SAMContract.revenueSweep(revenueAddress, {from: minter});
+    unsweepRevenueAmount = await SAMContract.unsweepRevenueAmount();
+    assert.equal(unsweepRevenueAmount.toString(), "0");
+
+    let sweepedAmount = await LFGToken.balanceOf(revenueAddress);
+    console.log("Sweep amount ", sweepedAmount.toString());
+    assert.equal(sweepedAmount.toString(), "437500");
   });
 
   it("test remove listing ", async function () {

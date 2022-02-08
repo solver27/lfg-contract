@@ -26,6 +26,12 @@ contract SAMContract is Ownable, ReentrancyGuard {
 
     event ClaimToken(address indexed addr, uint amount);
 
+    event NewFeeRate(uint feeRate);
+
+    event NewFeeBurnRate(uint burnRate);
+
+    event RevenueSweep(address indexed to, uint256 amount);
+
     struct listing {
         bytes32 id;             // The listing id
         address seller;         // The owner of the NFT who want to sell it
@@ -60,9 +66,54 @@ contract SAMContract is Ownable, ReentrancyGuard {
 
     uint operationNonce;
 
-    constructor (address _owner, NftEscrow _nftEscrow) {
+    uint256 public constant MAXIMUM_FEE_RATE = 5000;
+    uint256 public constant FEE_RATE_BASE = 10000;
+    uint256 public feeRate;
+
+    uint256 public constant MAXIMUM_FEE_BURN_RATE = 10000;  // maximum burn 100% of the fee
+    uint256 public feeBurnRate;
+
+    // The address to burn token
+    address public burnAddress;
+
+    // Accumulated revenue amount
+    uint256 public accRevenueAmount;
+
+    // Unsweeped revenue amount
+    uint256 public unsweepRevenueAmount;
+
+    IERC20 public lfgToken;
+
+    constructor (address _owner, NftEscrow _nftEscrow, IERC20 _lfgToken, address _burnAddress) {
         _transferOwnership(_owner);
         nftEscrow = _nftEscrow;
+        lfgToken = _lfgToken;
+        burnAddress = _burnAddress;
+
+        feeRate = 250;  // 2.5%
+        feeBurnRate = 5000; // 50%
+    }
+
+    /*
+     * @notice Update the fee rate
+     * @dev Only callable by owner.
+     * @param _fee: the fee rate
+     */
+    function updateFeeRate(uint256 _feeRate) external onlyOwner {
+        require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
+        feeRate = _feeRate;
+        emit NewFeeRate(_feeRate);
+    }
+
+    /*
+     * @notice Update the fee rate
+     * @dev Only callable by owner.
+     * @param _fee: the fee rate
+     */
+    function updateFeeBurnRate(uint256 _burnRate) external onlyOwner {
+        require(_burnRate <= MAXIMUM_FEE_BURN_RATE, "Invalid fee rate");
+        feeBurnRate = _burnRate;
+        emit NewFeeBurnRate(_burnRate);
     }
 
     function addListing(address _hostContract, uint _tokenId, uint _startPrice, uint _buyNowPrice, uint _duration) external nonReentrant {
@@ -155,6 +206,8 @@ contract SAMContract is Ownable, ReentrancyGuard {
         listing storage lst = listingRegistry[listingId];
         require(lst.timestamp + lst.auctionDuration > block.timestamp, "The listing is expired");
 
+        _processFee(msg.sender, lst.buyNowPrice);
+
         nftEscrow.depositToken(msg.sender, lst.buyNowPrice);
         nftEscrow.transferToken(msg.sender, lst.seller, lst.buyNowPrice);
         nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
@@ -204,6 +257,7 @@ contract SAMContract is Ownable, ReentrancyGuard {
             }
         }
 
+        _processFee(msg.sender, bid.price);
         nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
         nftEscrow.transferToken(msg.sender, lst.seller, bid.price);
 
@@ -230,5 +284,23 @@ contract SAMContract is Ownable, ReentrancyGuard {
         nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         _removeListing(lst.id, lst.seller);
+    }
+
+    function _processFee(address buyer, uint256 price) internal {
+        uint256 fee = price * feeRate / FEE_RATE_BASE;
+        uint256 feeToBurn = fee * feeBurnRate / FEE_RATE_BASE;
+        uint256 revenue = fee - feeToBurn;
+        lfgToken.transferFrom(buyer, address(this), fee);
+        lfgToken.transfer(burnAddress, feeToBurn);
+        accRevenueAmount += revenue;
+        unsweepRevenueAmount += revenue;
+    }
+
+    function revenueSweep(address to) public onlyOwner {
+        lfgToken.transfer(to, unsweepRevenueAmount);
+
+        emit RevenueSweep(to, unsweepRevenueAmount);
+
+        unsweepRevenueAmount = 0;
     }
 }
