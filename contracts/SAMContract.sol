@@ -10,10 +10,9 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "./NftEscrow.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-contract SAMContract is Ownable, ReentrancyGuard {
+contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
     event ListingPlaced(bytes32 indexed listingId, address indexed sender, address indexed hostContract, uint tokenId,
         uint auctionStartPrice, uint buyNowPrice, string uri);
@@ -31,6 +30,10 @@ contract SAMContract is Ownable, ReentrancyGuard {
     event NewFeeBurnRate(uint burnRate);
 
     event RevenueSweep(address indexed to, uint256 amount);
+
+    event NftDeposit(address indexed sender, address indexed hostContract, uint tokenId);
+
+    event NftTransfer(address indexed sender, address indexed hostContract, uint tokenId);
 
     struct listing {
         bytes32 id;             // The listing id
@@ -51,8 +54,6 @@ contract SAMContract is Ownable, ReentrancyGuard {
         uint price;             // The bidder price
         uint timestamp;         // The timestamp user create the bidding
     }
-
-    NftEscrow public nftEscrow;
 
     address [] userAddresses;
 
@@ -84,9 +85,25 @@ contract SAMContract is Ownable, ReentrancyGuard {
 
     IERC20 public lfgToken;
 
-    constructor (address _owner, NftEscrow _nftEscrow, IERC20 _lfgToken, address _burnAddress) {
+    struct nftItem {
+        address owner;          // The owner of the NFT
+        address hostContract;   // The source of the contract
+        uint tokenId;           // The NFT token ID
+    }
+
+    mapping (bytes32 => nftItem) public nftItems;
+
+    struct userToken {
+        uint256 lockedAmount;
+        uint256 claimableAmount;
+    }
+
+    mapping (address => userToken) public addrTokens;
+
+    uint256 public totalEscrowAmount;
+
+    constructor (address _owner, IERC20 _lfgToken, address _burnAddress) {
         _transferOwnership(_owner);
-        nftEscrow = _nftEscrow;
         lfgToken = _lfgToken;
         burnAddress = _burnAddress;
 
@@ -117,7 +134,7 @@ contract SAMContract is Ownable, ReentrancyGuard {
     }
 
     function addListing(address _hostContract, uint _tokenId, uint _startPrice, uint _buyNowPrice, uint _duration) external nonReentrant {
-        nftEscrow.depositNft(msg.sender, _hostContract, _tokenId);
+        _depositNft(msg.sender, _hostContract, _tokenId);
 
         bytes32 listingId = keccak256(abi.encodePacked(operationNonce, _hostContract, _tokenId));
 
@@ -163,7 +180,7 @@ contract SAMContract is Ownable, ReentrancyGuard {
 
         require(price > minPrice, "Bid price too low");
 
-        nftEscrow.depositToken(msg.sender, price);
+        _depositToken(msg.sender, price);
 
         bytes32 biddingId = keccak256(abi.encodePacked(operationNonce, lst.hostContract, lst.tokenId));
         biddingRegistry[biddingId].id = biddingId;
@@ -208,16 +225,16 @@ contract SAMContract is Ownable, ReentrancyGuard {
 
         _processFee(msg.sender, lst.buyNowPrice);
 
-        nftEscrow.depositToken(msg.sender, lst.buyNowPrice);
-        nftEscrow.transferToken(msg.sender, lst.seller, lst.buyNowPrice);
-        nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
+        _depositToken(msg.sender, lst.buyNowPrice);
+        _transferToken(msg.sender, lst.seller, lst.buyNowPrice);
+        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         emit BuyNow(listingId, msg.sender, lst.buyNowPrice);
 
         // Refund the failed bidder
         for (uint i = 0; i < lst.biddingIds.length; ++i) {
             bytes32 tmpId = lst.biddingIds[i];
-            nftEscrow.transferToken(biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].price);
+            _transferToken(biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].price);
         }
 
         _removeListing(listingId, lst.seller);
@@ -239,7 +256,11 @@ contract SAMContract is Ownable, ReentrancyGuard {
     }
 
     function claimToken() external nonReentrant {
-        uint256 claimedAmount = nftEscrow.claimToken(msg.sender);
+        require(addrTokens[msg.sender].claimableAmount > 0, "The claimableAmount is zero");
+        lfgToken.transfer(msg.sender, addrTokens[msg.sender].claimableAmount);
+        uint256 claimedAmount = addrTokens[msg.sender].claimableAmount;
+        totalEscrowAmount -= addrTokens[msg.sender].claimableAmount;
+        addrTokens[msg.sender].claimableAmount = 0;
 
         emit ClaimToken(msg.sender, claimedAmount);
     }
@@ -258,8 +279,8 @@ contract SAMContract is Ownable, ReentrancyGuard {
         }
 
         _processFee(msg.sender, bid.price);
-        nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
-        nftEscrow.transferToken(msg.sender, lst.seller, bid.price);
+        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
+        _transferToken(msg.sender, lst.seller, bid.price);
 
         emit ClaimNFT(lst.id, biddingId, msg.sender);
 
@@ -267,7 +288,7 @@ contract SAMContract is Ownable, ReentrancyGuard {
         for (uint i = 0; i < lst.biddingIds.length; ++i) {
             bytes32 tmpId = lst.biddingIds[i];
             if (tmpId != biddingId) {
-                nftEscrow.transferToken(biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].price);
+                _transferToken(biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].bidder, biddingRegistry[tmpId].price);
             }
         }
 
@@ -281,7 +302,7 @@ contract SAMContract is Ownable, ReentrancyGuard {
         require(lst.biddingIds.length == 0, "Already received bidding, cannot close it");
 
         // return the NFT to seller
-        nftEscrow.transferNft(msg.sender, lst.hostContract, lst.tokenId);
+        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         _removeListing(lst.id, lst.seller);
     }
@@ -302,5 +323,44 @@ contract SAMContract is Ownable, ReentrancyGuard {
         emit RevenueSweep(to, unsweepRevenueAmount);
 
         unsweepRevenueAmount = 0;
+    }
+
+    function _depositNft(address from, address _hostContract, uint _tokenId) internal {
+        ERC721 nftContract = ERC721(_hostContract);
+        nftContract.safeTransferFrom(from, address(this), _tokenId);
+
+        bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
+        nftItems[itemId] = nftItem({owner: from, hostContract : _hostContract, tokenId : _tokenId });
+
+        emit NftDeposit(from, _hostContract, _tokenId);
+    }
+
+    function _transferNft(address to, address _hostContract, uint _tokenId) internal {
+        bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
+
+        ERC721 nftContract = ERC721(_hostContract);
+        nftContract.safeTransferFrom(address(this), to, _tokenId);
+        delete nftItems[itemId];
+
+        emit NftTransfer(to, _hostContract, _tokenId);
+    }
+
+    function _depositToken(address addr, uint256 _amount) internal {
+        lfgToken.transferFrom(addr, address(this), _amount);
+        addrTokens[addr].lockedAmount += _amount;
+        totalEscrowAmount += _amount;
+    }
+
+    function _transferToken(address from, address to, uint256 _amount) internal {
+        require(addrTokens[from].lockedAmount >= _amount, "The locked amount is not enough");
+        addrTokens[to].claimableAmount += _amount;
+        addrTokens[from].lockedAmount -= _amount;
+    }
+
+    /**
+     * Always returns `IERC721Receiver.onERC721Received.selector`.
+     */
+    function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
+        return this.onERC721Received.selector;
     }
 }

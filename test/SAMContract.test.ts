@@ -5,7 +5,6 @@ const hre = require("hardhat");
 const {web3} = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
-const NftEscrowArt = hre.artifacts.require("NftEscrow");
 const SAMContractArt = hre.artifacts.require("SAMContract");
 const BN = require("bn.js");
 const {createImportSpecifier} = require("typescript");
@@ -13,7 +12,6 @@ const {createImportSpecifier} = require("typescript");
 describe("SAMContract", function () {
   let LFGToken = null;
   let LFGNFT = null;
-  let NftEscrow = null;
   let SAMContract = null;
   let accounts = ["", "", "", "", "", "", ""],
     minter, burnAddress, revenueAddress;
@@ -27,16 +25,10 @@ describe("SAMContract", function () {
       "1000000000000000000000000000", minter);
 
       LFGNFT = await LFGNFTArt.new();
-      NftEscrow = await NftEscrowArt.new(minter, LFGToken.address);
 
-      SAMContract = await SAMContractArt.new(minter, NftEscrow.address, LFGToken.address, burnAddress);
+      SAMContract = await SAMContractArt.new(minter, LFGToken.address, burnAddress);
 
       await LFGNFT.setMinter(minter, true);
-
-      await NftEscrow.setOperator(SAMContract.address, {from: minter}); // During construct owner changed to minter
-
-      const operatorResult = await NftEscrow.operator();
-      console.log("get operator: ", operatorResult.toString());
   
     } catch (err) {
       console.log(err);
@@ -54,10 +46,7 @@ describe("SAMContract", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(NftEscrow.address, 1, {from: accounts[2]});
-
-    const operatorResult = await NftEscrow.operator();
-    console.log("get operator: ", operatorResult.toString());
+    await LFGNFT.approve(SAMContract.address, 1, {from: accounts[2]});
 
     await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "10000000", "20000000", 3600 * 24, {from:accounts[2]});
 
@@ -72,7 +61,6 @@ describe("SAMContract", function () {
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());
 
-    await LFGToken.approve(NftEscrow.address, testDepositAmount, {from: accounts[1]});
     await LFGToken.approve(SAMContract.address, testDepositAmount, {from: accounts[1]}); // to charge fees
 
     await SAMContract.buyNow(listingId, {from: accounts[1]});
@@ -85,19 +73,19 @@ describe("SAMContract", function () {
     console.log("tokenIds of account0 ", JSON.stringify(account2TokenIds));
     assert.equal(account2TokenIds[0], "2");
 
-    let account2Tokens = await NftEscrow.addrTokens(accounts[2]);
+    let account2Tokens = await SAMContract.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
     assert.equal(account2Tokens["claimableAmount"], "20000000");
 
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
 
-    const account1Tokens = await NftEscrow.addrTokens(accounts[1]);
+    const account1Tokens = await SAMContract.addrTokens(accounts[1]);
     console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
 
     await SAMContract.claimToken({from: accounts[2]});
 
-    account2Tokens = await NftEscrow.addrTokens(accounts[2]);
+    account2Tokens = await SAMContract.addrTokens(accounts[2]);
     console.log("After claim, Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
     balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
@@ -122,10 +110,7 @@ describe("SAMContract", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(NftEscrow.address, account2TokenIds[0], {from: accounts[2]});
-
-    const operatorResult = await NftEscrow.operator();
-    console.log("get operator: ", operatorResult.toString());
+    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], {from: accounts[2]});
 
     await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "10000000", "20000000", 3600 * 24, {from:accounts[2]});
 
@@ -138,7 +123,6 @@ describe("SAMContract", function () {
     const testDepositAmount = "100000000000000000000000";
     for (let accountId = 3; accountId < 6; ++accountId) {
         await LFGToken.transfer(accounts[accountId], testDepositAmount);
-        await LFGToken.approve(NftEscrow.address, testDepositAmount, {from: accounts[accountId]});
         await LFGToken.approve(SAMContract.address, testDepositAmount, {from: accounts[accountId]}); // to charge fees
     }
 
@@ -174,12 +158,12 @@ describe("SAMContract", function () {
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
 
-    let account2Tokens = await NftEscrow.addrTokens(accounts[2]);
+    let account2Tokens = await SAMContract.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
     assert.equal(account2Tokens["claimableAmount"], "15000000");
 
     // Check the refunding bidding to account 3.
-    let account3Tokens = await NftEscrow.addrTokens(accounts[3]);
+    let account3Tokens = await SAMContract.addrTokens(accounts[3]);
     console.log("Escrow tokens of account 3 ", JSON.stringify(account3Tokens));
     assert.equal(account3Tokens["claimableAmount"], "11000000");
 
@@ -224,10 +208,7 @@ describe("SAMContract", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(NftEscrow.address, account2TokenIds[0], {from: accounts[2]});
-
-    const operatorResult = await NftEscrow.operator();
-    console.log("get operator: ", operatorResult.toString());
+    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], {from: accounts[2]});
 
     await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "10000000", "20000000", 3600 * 24, {from:accounts[2]});
 
