@@ -16,7 +16,7 @@ contract NftEscrow is Ownable, ReentrancyGuard, IERC721Receiver {
 
     event NftDeposit(address indexed sender, address indexed hostContract, uint tokenId);
 
-    event NftWithdraw(address indexed sender, address indexed hostContract, uint tokenId);
+    event NftTransfer(address indexed sender, address indexed hostContract, uint tokenId);
 
     struct nftItem {
         address owner;          // The owner of the NFT
@@ -63,23 +63,14 @@ contract NftEscrow is Ownable, ReentrancyGuard, IERC721Receiver {
         emit NftDeposit(from, _hostContract, _tokenId);
     }
 
-    function withdrawNft(address to, address _hostContract, uint _tokenId) external nonReentrant onlyOperator {
-        bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
-        require(nftItems[itemId].owner == to, "The NFT item doesn't belong to the caller");
-
-        ERC721 nftContract = ERC721(_hostContract);
-        nftContract.safeTransferFrom(address(this), to, _tokenId);
-        delete nftItems[itemId];
-
-        emit NftWithdraw(to, _hostContract, _tokenId);
-    }
-
     function transferNft(address to, address _hostContract, uint _tokenId) external nonReentrant onlyOperator {
         bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
 
         ERC721 nftContract = ERC721(_hostContract);
         nftContract.safeTransferFrom(address(this), to, _tokenId);
         delete nftItems[itemId];
+
+        emit NftTransfer(to, _hostContract, _tokenId);
     }
 
     function depositToken(address addr, uint256 _amount) external nonReentrant onlyOperator {
@@ -89,7 +80,7 @@ contract NftEscrow is Ownable, ReentrancyGuard, IERC721Receiver {
     }
 
     function claimToken(address addr) external nonReentrant onlyOperator returns (uint256) {
-        require(addrTokens[addr].claimableAmount > 0);
+        require(addrTokens[addr].claimableAmount > 0, "The claimableAmount is zero");
         lfgToken.transfer(addr, addrTokens[addr].claimableAmount);
         uint256 claimedAmount = addrTokens[addr].claimableAmount;
         totalEscrowAmount -= addrTokens[addr].claimableAmount;

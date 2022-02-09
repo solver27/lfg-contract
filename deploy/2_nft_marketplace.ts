@@ -15,12 +15,10 @@ async function deploy() {
   await lfgToken.deployed();
   console.log("LFGToken deployed to: ", lfgToken.address);
 
-
   const LFGNFT: ContractFactory = await ethers.getContractFactory("LFGNFT");
   const lfgNft: Contract = await LFGNFT.deploy();
   await lfgNft.deployed();
   console.log("lfgNft deployed to: ", lfgNft.address);
-
 
   const NftEscrow: ContractFactory = await ethers.getContractFactory(
     "NftEscrow"
@@ -29,6 +27,20 @@ async function deploy() {
   const nftEscrow: Contract = await NftEscrow.deploy(process.env.MULTISIG_PUBKEY, lfgToken.address);
   await nftEscrow.deployed();
   console.log("NftEscrow deployed to: ", nftEscrow.address);
+
+
+  const SAMContract: ContractFactory = await ethers.getContractFactory(
+    "SAMContract"
+  );
+
+  const samContract: Contract = await SAMContract.deploy(
+    process.env.MULTISIG_PUBKEY,
+    nftEscrow.address,
+    lfgToken.address,
+    "0x000000000000000000000000000000000000dead");
+
+  await samContract.deployed();
+  console.log("SAMContract deployed to: ", samContract.address);
 }
 
 async function main(): Promise<void> {

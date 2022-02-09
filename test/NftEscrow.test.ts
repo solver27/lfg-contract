@@ -56,7 +56,7 @@ describe("NftEscrow", function () {
     tokenIds = await LFGNFT.tokensOfOwner(accounts[0]);
     console.log("tokenIds ", JSON.stringify(tokenIds));
 
-    await NftEscrow.withdrawNft(accounts[0], LFGNFT.address, 1, {from: minter});
+    await NftEscrow.transferNft(accounts[0], LFGNFT.address, 1, {from: minter});
     tokenIds = await LFGNFT.tokensOfOwner(accounts[0]);
     console.log("tokenIds ", JSON.stringify(tokenIds));
   });
@@ -78,7 +78,9 @@ describe("NftEscrow", function () {
     balance = await LFGToken.balanceOf(accounts[1]);
     console.log("balance ", balance.toString());
 
-    await NftEscrow.withdrawToken(accounts[1], halfDepositAmount, {from: minter});
+    await NftEscrow.transferToken(accounts[1], accounts[1], halfDepositAmount, {from: minter});
+
+    await NftEscrow.claimToken(accounts[1], {from: minter});
 
     balance = await LFGToken.balanceOf(accounts[1]);
     console.log("balance ", balance.toString());
