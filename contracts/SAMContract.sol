@@ -28,6 +28,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         string uri
     );
 
+    event ListingRemoved(bytes32 indexed listingId, address indexed sender);
+
     event BiddingPlaced(bytes32 indexed biddingId, bytes32 listingId, uint256 price);
 
     event BuyNow(bytes32 indexed listingId, address indexed buyer, uint256 price);
@@ -168,7 +170,10 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
         if (_dutchAuction) {
             uint256 discount = (_discountAmount * _duration) / _discountInterval;
-            require(_startPrice > discount, "Dutch auction start price lower than the total discount");
+            require(
+                _startPrice > discount,
+                "Dutch auction start price lower than the total discount"
+            );
         }
 
         _depositNft(msg.sender, _hostContract, _tokenId);
@@ -228,7 +233,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
             uint256 discount = lst.discountAmount * (timeElapsed / lst.discountInterval);
             return lst.startPrice - discount;
         }
-        
+
         return lst.buyNowPrice;
     }
 
@@ -333,6 +338,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
         // Delete from the mapping
         delete listingRegistry[listingId];
+
+        emit ListingRemoved(listingId, seller);
     }
 
     function claimToken() external nonReentrant {

@@ -4,7 +4,6 @@ import { Contract, ContractFactory } from "ethers";
 import { ethers } from "hardhat"; // Optional (for `node <script>`)
 
 async function deploy() {
-
   const LFGToken: ContractFactory = await ethers.getContractFactory("LFGToken");
   const lfgToken: Contract = await LFGToken.deploy(
     "LFG Token",
@@ -20,23 +19,13 @@ async function deploy() {
   await lfgNft.deployed();
   console.log("lfgNft deployed to: ", lfgNft.address);
 
-  const NftEscrow: ContractFactory = await ethers.getContractFactory(
-    "NftEscrow"
-  );
-
-  const nftEscrow: Contract = await NftEscrow.deploy(process.env.MULTISIG_PUBKEY, lfgToken.address);
-  await nftEscrow.deployed();
-  console.log("NftEscrow deployed to: ", nftEscrow.address);
-
-
   const SAMContract: ContractFactory = await ethers.getContractFactory(
     "SAMContract"
   );
 
   const samContract: Contract = await SAMContract.deploy(
     process.env.MULTISIG_PUBKEY,
-    nftEscrow.address,
-    lfgToken.address,
+    "0x53c54E27DEc0Fa40ac02B032c6766Ce8E04A2A70", //lfgToken.address,
     "0x000000000000000000000000000000000000dead");
 
   await samContract.deployed();
