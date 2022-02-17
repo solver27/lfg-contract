@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "./interfaces/IERC2981.sol";
 
 contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     event ListingPlaced(
@@ -47,6 +48,10 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     event NftDeposit(address indexed sender, address indexed hostContract, uint256 tokenId);
 
     event NftTransfer(address indexed sender, address indexed hostContract, uint256 tokenId);
+
+    event RoyaltiesPaid(address indexed hostContract, uint256 indexed tokenId, uint256 royaltiesAmount);
+
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
     struct listing {
         bytes32 id; // The listing id
@@ -131,6 +136,35 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
         feeRate = 250; // 2.5%
         feeBurnRate = 5000; // 50%
+    }
+
+    /// @notice Checks if NFT contract implements the ERC-2981 interface
+    /// @param _contract - the address of the NFT contract to query
+    /// @return true if ERC-2981 interface is supported, false otherwise
+    function _checkRoyalties(address _contract) internal view returns (bool) {
+        bool success = IERC2981(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
+        return success;
+    }
+
+    function _deduceRoyalties(address _contract, uint256 tokenId, uint256 grossSaleValue)
+        internal
+        returns (uint256 netSaleAmount)
+    {
+        // Get amount of royalties to pays and recipient
+        (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981(_contract).royaltyInfo(
+            tokenId,
+            grossSaleValue
+        );
+        // Deduce royalties from sale value
+        uint256 netSaleValue = grossSaleValue - royaltiesAmount;
+        // Transfer royalties to rightholder if not zero
+        if (royaltiesAmount > 0) {
+            _transferToken(msg.sender, royaltiesReceiver, royaltiesAmount);
+        }
+
+        // Broadcast royalties payment
+        emit RoyaltiesPaid(_contract, tokenId, royaltiesAmount);
+        return netSaleValue;
     }
 
     /*
@@ -307,7 +341,13 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         _processFee(msg.sender, price);
 
         _depositToken(msg.sender, price);
-        _transferToken(msg.sender, lst.seller, price);
+
+        uint256 sellerAmount = price;
+        if (_checkRoyalties(lst.hostContract)) {
+            sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, price);
+        }
+
+        _transferToken(msg.sender, lst.seller, sellerAmount);
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         emit BuyNow(listingId, msg.sender, price);
@@ -370,7 +410,13 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
         _processFee(msg.sender, bid.price);
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
-        _transferToken(msg.sender, lst.seller, bid.price);
+
+        uint256 sellerAmount = bid.price;
+        if (_checkRoyalties(lst.hostContract)) {
+            sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, bid.price);
+        }
+
+        _transferToken(msg.sender, lst.seller, sellerAmount);
 
         emit ClaimNFT(lst.id, biddingId, msg.sender);
 
