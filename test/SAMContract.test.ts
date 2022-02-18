@@ -26,7 +26,7 @@ describe("SAMContract", function () {
 
       LFGNFT = await LFGNFTArt.new();
 
-      SAMContract = await SAMContractArt.new(minter, LFGToken.address, burnAddress);
+      SAMContract = await SAMContractArt.new(minter, LFGToken.address, burnAddress, revenueAddress);
 
       await LFGNFT.setMinter(minter, true);
 
@@ -188,15 +188,8 @@ describe("SAMContract", function () {
     console.log("Burn amount ", burnAmount.toString());
     assert.equal(burnAmount.toString(), "437500");
 
-    let accRevenueAmount = await SAMContract.accRevenueAmount();
-    let unsweepRevenueAmount = await SAMContract.unsweepRevenueAmount();
-    assert.equal(accRevenueAmount.toString(), "437500");
-    assert.equal(unsweepRevenueAmount.toString(), "437500");
-
-    // Revenue sweep
-    await SAMContract.revenueSweep(revenueAddress, { from: minter });
-    unsweepRevenueAmount = await SAMContract.unsweepRevenueAmount();
-    assert.equal(unsweepRevenueAmount.toString(), "0");
+    let revenueAmount = await SAMContract.revenueAmount();
+    assert.equal(revenueAmount.toString(), "437500");
 
     let sweepedAmount = await LFGToken.balanceOf(revenueAddress);
     console.log("Sweep amount ", sweepedAmount.toString());
