@@ -55,6 +55,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
     event RoyaltiesFeePaid(address indexed hostContract, uint256 indexed tokenId, uint256 royaltiesFeeAmount);
 
+    event SetNftContractWhitelist(address indexed nftContract, bool isWhitelist);
+
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
     struct listing {
@@ -80,7 +82,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 timestamp; // The timestamp user create the bidding
     }
 
-    address[] userAddresses;
+    // The NFT contract whitelists, only NFT contract whitelisted can sell in the marketplace
+    mapping(address => bool) public nftContractWhiteLists;
 
     mapping(bytes32 => listing) public listingRegistry; // The mapping of listing Id to listing details
 
@@ -235,6 +238,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 _discountInterval,
         uint256 _discountAmount
     ) external nonReentrant {
+        require(nftContractWhiteLists[_hostContract], "The NFT hosting contract is not in whitelist");
         require(_startTime >= block.timestamp, "Listing auction start time past already");
 
         if (_dutchAuction) {
@@ -263,8 +267,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         operationNonce++;
 
         addrListingIds[msg.sender].push(listingId);
-
-        userAddresses.push(msg.sender);
 
         ERC721 hostContract = ERC721(_hostContract);
         string memory uri = hostContract.tokenURI(_tokenId);
@@ -569,5 +571,13 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     function updateRevenueAddress(address _revenueAddress) external onlyOwner {
         require(_revenueAddress != address(0), "Invalid revenue address");
         revenueAddress = _revenueAddress;
+    }
+
+    function setNftContractWhitelist(address _addr, bool _isWhitelist) external onlyOwner {
+        require(_addr != address(0), "Invalid NFT contract address");
+
+        nftContractWhiteLists[_addr] = _isWhitelist;
+
+        emit SetNftContractWhitelist(_addr, _isWhitelist);
     }
 }
