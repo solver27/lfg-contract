@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "./interfaces/IERC2981.sol";
 
 contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     event ListingPlaced(
@@ -42,11 +43,19 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
     event NewFeeBurnRate(uint256 burnRate);
 
+    event NewRoyaltiesFeeRate(uint256 royaltiesFeeRate);
+
     event RevenueSweep(address indexed to, uint256 amount);
 
     event NftDeposit(address indexed sender, address indexed hostContract, uint256 tokenId);
 
     event NftTransfer(address indexed sender, address indexed hostContract, uint256 tokenId);
+
+    event RoyaltiesPaid(address indexed hostContract, uint256 indexed tokenId, uint256 royaltiesAmount);
+
+    event RoyaltiesFeePaid(address indexed hostContract, uint256 indexed tokenId, uint256 royaltiesFeeAmount);
+
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
     struct listing {
         bytes32 id; // The listing id
@@ -88,18 +97,26 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     uint256 public feeRate;
 
     uint256 public constant MAXIMUM_FEE_BURN_RATE = 10000; // maximum burn 100% of the fee
+
+    // The rate of fee to burn
     uint256 public feeBurnRate;
+
+    // maximum charge 50% royalty fee
+    uint256 public constant MAXIMUM_ROYALTIES_FEE_RATE = 5000;
+
+    // The royalties fee rate
+    uint256 public royaltiesFeeRate;
 
     // The address to burn token
     address public burnAddress;
 
     uint256 public totalBurnAmount;
 
-    // Accumulated revenue amount
-    uint256 public accRevenueAmount;
+    // The revenue address
+    address public revenueAddress;
 
-    // Unsweeped revenue amount
-    uint256 public unsweepRevenueAmount;
+    // Total revenue amount
+    uint256 public revenueAmount;
 
     IERC20 public lfgToken;
 
@@ -123,14 +140,55 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     constructor(
         address _owner,
         IERC20 _lfgToken,
-        address _burnAddress
+        address _burnAddress,
+        address _revenueAddress
     ) {
         _transferOwnership(_owner);
         lfgToken = _lfgToken;
         burnAddress = _burnAddress;
+        revenueAddress = _revenueAddress;
 
         feeRate = 250; // 2.5%
         feeBurnRate = 5000; // 50%
+    }
+
+    /// @notice Checks if NFT contract implements the ERC-2981 interface
+    /// @param _contract - the address of the NFT contract to query
+    /// @return true if ERC-2981 interface is supported, false otherwise
+    function _checkRoyalties(address _contract) internal view returns (bool) {
+        bool success = IERC2981(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
+        return success;
+    }
+
+    function _deduceRoyalties(address _contract, uint256 tokenId, uint256 grossSaleValue)
+        internal
+        returns (uint256 netSaleAmount)
+    {
+        // Get amount of royalties to pays and recipient
+        (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981(_contract).royaltyInfo(
+            tokenId,
+            grossSaleValue
+        );
+        // Deduce royalties from sale value
+        uint256 netSaleValue = grossSaleValue - royaltiesAmount;
+        // Transfer royalties to rightholder if not zero
+        if (royaltiesAmount > 0) {
+            uint256 royaltyFee = royaltiesAmount * royaltiesFeeRate / FEE_RATE_BASE;
+            if (royaltyFee > 0) {
+                _transferToken(msg.sender, revenueAddress, royaltyFee);
+                revenueAmount = royaltyFee;
+
+                emit RoyaltiesFeePaid(_contract, tokenId, royaltyFee);
+            }
+
+            uint256 payToReceiver = royaltiesAmount - royaltyFee;
+            _transferToken(msg.sender, royaltiesReceiver, payToReceiver);
+
+            // Broadcast royalties payment
+            emit RoyaltiesPaid(_contract, tokenId, payToReceiver);
+        }
+
+        return netSaleValue;
     }
 
     /*
@@ -153,6 +211,17 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         require(_burnRate <= MAXIMUM_FEE_BURN_RATE, "Invalid fee rate");
         feeBurnRate = _burnRate;
         emit NewFeeBurnRate(_burnRate);
+    }
+
+    /*
+     * @notice Update the royalty fee rate
+     * @dev Only callable by owner.
+     * @param _fee: the fee rate
+     */
+    function updateroyaltiesFeeRate(uint256 _feeRate) external onlyOwner {
+        require(_feeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
+        royaltiesFeeRate = _feeRate;
+        emit NewRoyaltiesFeeRate(_feeRate);
     }
 
     function addListing(
@@ -307,7 +376,13 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         _processFee(msg.sender, price);
 
         _depositToken(msg.sender, price);
-        _transferToken(msg.sender, lst.seller, price);
+
+        uint256 sellerAmount = price;
+        if (_checkRoyalties(lst.hostContract)) {
+            sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, price);
+        }
+
+        _transferToken(msg.sender, lst.seller, sellerAmount);
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         emit BuyNow(listingId, msg.sender, price);
@@ -370,7 +445,13 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
         _processFee(msg.sender, bid.price);
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
-        _transferToken(msg.sender, lst.seller, bid.price);
+
+        uint256 sellerAmount = bid.price;
+        if (_checkRoyalties(lst.hostContract)) {
+            sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, bid.price);
+        }
+
+        _transferToken(msg.sender, lst.seller, sellerAmount);
 
         emit ClaimNFT(lst.id, biddingId, msg.sender);
 
@@ -408,20 +489,11 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
         uint256 feeToBurn = (fee * feeBurnRate) / FEE_RATE_BASE;
         uint256 revenue = fee - feeToBurn;
-        lfgToken.transferFrom(buyer, address(this), fee);
-        lfgToken.transfer(burnAddress, feeToBurn);
+        lfgToken.transferFrom(buyer, revenueAddress, revenue);
+        lfgToken.transferFrom(buyer, burnAddress, feeToBurn);
         totalBurnAmount += feeToBurn;
 
-        accRevenueAmount += revenue;
-        unsweepRevenueAmount += revenue;
-    }
-
-    function revenueSweep(address to) public onlyOwner {
-        lfgToken.transfer(to, unsweepRevenueAmount);
-
-        emit RevenueSweep(to, unsweepRevenueAmount);
-
-        unsweepRevenueAmount = 0;
+        revenueAmount += revenue;
     }
 
     function _depositNft(
@@ -478,5 +550,24 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         bytes memory
     ) public virtual override returns (bytes4) {
         return this.onERC721Received.selector;
+    }
+
+    /*
+     * @notice Update the burn address
+     * @dev Only callable by owner.
+     * @param _fee: the burn address
+     */
+    function updateBurnAddress(address _burnAddress) external onlyOwner {
+        burnAddress = _burnAddress;
+    }
+
+    /*
+     * @notice Update the revenue address
+     * @dev Only callable by owner.
+     * @param _fee: the revenue address
+     */
+    function updateRevenueAddress(address _revenueAddress) external onlyOwner {
+        require(_revenueAddress != address(0), "Invalid revenue address");
+        revenueAddress = _revenueAddress;
     }
 }
