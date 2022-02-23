@@ -23,19 +23,22 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     // creators
     mapping(uint256 => address) public creators;
 
+    // royalties
+    mapping(uint256 => uint16) private royalties;
+
     // royalty percentage
-    uint256 public royaltyPercent;
+    uint16 public royaltyPercent;
 
     // MAX royalty percent
-    uint256 public constant MAX_ROYALTY = 1000;
+    uint16 public constant MAX_ROYALTY = 1000;
 
     modifier onlyMinter() {
         require(minters[msg.sender], "NFT: Invalid minter");
         _;
     }
 
-    constructor(uint256 _royaltyPercent) ERC721("LFGNFT", "LFGNFT") {
-        require(_royaltyPercent <= MAX_ROYALTY, "Invalid royalty percentage");
+    constructor(uint16 _royaltyPercent) ERC721("LFGNFT", "LFGNFT") {
+        require(_royaltyPercent <= MAX_ROYALTY, "NFT: Invalid royalty percentage");
 
         royaltyPercent = _royaltyPercent;
     }
@@ -120,6 +123,14 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
         receiver = creators[_tokenId];
         royaltyAmount = creators[_tokenId] == address(0)
             ? 0
-            : (_salePrice * royaltyPercent) / 10000;
+            : (_salePrice * (royalties[_tokenId] == 0 ? royaltyPercent : royalties[_tokenId])) /
+                10000;
+    }
+
+    function setRoyalty(uint256 _tokenId, uint16 _royalty) external {
+        require(creators[_tokenId] == msg.sender, "NFT: Invalid creator");
+        require(_royalty <= MAX_ROYALTY, "NFT: Invalid royalty percentage");
+
+        royalties[_tokenId] = _royalty;
     }
 }
