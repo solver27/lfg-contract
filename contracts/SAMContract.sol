@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-//** LFG Vesting Contract */
+//** SAM(Social Aggregator Marketplace) Contract */
 //** Author Xiao Shengguang : SAM(Social Aggregator Marketplace) Contract 2022.1 */
 
 pragma solidity ^0.8.0;
@@ -51,11 +51,28 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
     event NftTransfer(address indexed sender, address indexed hostContract, uint256 tokenId);
 
-    event RoyaltiesPaid(address indexed hostContract, uint256 indexed tokenId, uint256 royaltiesAmount);
+    event RoyaltiesPaid(
+        address indexed hostContract,
+        uint256 indexed tokenId,
+        uint256 royaltiesAmount
+    );
 
-    event RoyaltiesFeePaid(address indexed hostContract, uint256 indexed tokenId, uint256 royaltiesFeeAmount);
+    event RoyaltiesFeePaid(
+        address indexed hostContract,
+        uint256 indexed tokenId,
+        uint256 royaltiesFeeAmount
+    );
 
+    event SetNftContractWhitelist(address indexed nftContract, bool isWhitelist);
+
+    // https://eips.ethereum.org/EIPS/eip-2981
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+
+    // https://eips.ethereum.org/EIPS/eip-721
+    bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
+
+    // https://eips.ethereum.org/EIPS/eip-1155
+    bytes4 private constant _INTERFACE_ID_ERC1155 = 0xd9b67a26;
 
     struct listing {
         bytes32 id; // The listing id
@@ -67,8 +84,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 startTime; // The timestamp of the listing creation
         uint256 auctionDuration; // The duration of the biddings, in seconds
         bool dutchAuction; // Is this auction a dutch auction
-        uint256 discountInterval; // The discount interval, in seconds, every interval then start to
-        uint256 discountAmount; // The discount amount after discount interval
+        uint256 discountInterval; // The discount interval, in seconds
+        uint256 discountAmount; // The discount amount after every discount interval
         bytes32[] biddingIds; // The array of the bidding Ids
     }
 
@@ -80,7 +97,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 timestamp; // The timestamp user create the bidding
     }
 
-    address[] userAddresses;
+    // The NFT contract whitelists, only NFT contract whitelisted can sell in the marketplace
+    mapping(address => bool) public nftContractWhiteLists;
 
     mapping(bytes32 => listing) public listingRegistry; // The mapping of listing Id to listing details
 
@@ -160,10 +178,11 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         return success;
     }
 
-    function _deduceRoyalties(address _contract, uint256 tokenId, uint256 grossSaleValue)
-        internal
-        returns (uint256 netSaleAmount)
-    {
+    function _deduceRoyalties(
+        address _contract,
+        uint256 tokenId,
+        uint256 grossSaleValue
+    ) internal returns (uint256 netSaleAmount) {
         // Get amount of royalties to pays and recipient
         (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981(_contract).royaltyInfo(
             tokenId,
@@ -173,7 +192,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 netSaleValue = grossSaleValue - royaltiesAmount;
         // Transfer royalties to rightholder if not zero
         if (royaltiesAmount > 0) {
-            uint256 royaltyFee = royaltiesAmount * royaltiesFeeRate / FEE_RATE_BASE;
+            uint256 royaltyFee = (royaltiesAmount * royaltiesFeeRate) / FEE_RATE_BASE;
             if (royaltyFee > 0) {
                 _transferToken(msg.sender, revenueAddress, royaltyFee);
                 revenueAmount = royaltyFee;
@@ -224,6 +243,10 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         emit NewRoyaltiesFeeRate(_feeRate);
     }
 
+    /*
+     * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
+     * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
+     */
     function addListing(
         address _hostContract,
         uint256 _tokenId,
@@ -235,6 +258,10 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 _discountInterval,
         uint256 _discountAmount
     ) external nonReentrant {
+        require(
+            nftContractWhiteLists[_hostContract],
+            "The NFT hosting contract is not in whitelist"
+        );
         require(_startTime >= block.timestamp, "Listing auction start time past already");
 
         if (_dutchAuction) {
@@ -263,8 +290,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         operationNonce++;
 
         addrListingIds[msg.sender].push(listingId);
-
-        userAddresses.push(msg.sender);
 
         ERC721 hostContract = ERC721(_hostContract);
         string memory uri = hostContract.tokenURI(_tokenId);
@@ -306,6 +331,10 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         return lst.buyNowPrice;
     }
 
+    /*
+     * @notice Place bidding for the listing item, only support normal auction.
+     * @dev The bidding price must higher than previous price.
+     */
     function placeBid(bytes32 listingId, uint256 price) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
         require(block.timestamp >= lst.startTime, "The auction haven't start");
@@ -363,6 +392,10 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         return biddings;
     }
 
+    /*
+     * @notice Immediately buy the NFT.
+     * @dev If it is dutch auction, then the price is dutch auction price, if normal auction, then the price is buyNowPrice.
+     */
     function buyNow(bytes32 listingId) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
         require(block.timestamp >= lst.startTime, "The auction haven't start");
@@ -417,16 +450,24 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         emit ListingRemoved(listingId, seller);
     }
 
+    /*
+     * @notice The NFT seller or failed bidder can claim the token back.
+     * @dev All the available token under his account will be claimed.
+     */
     function claimToken() external nonReentrant {
         require(addrTokens[msg.sender].claimableAmount > 0, "The claimableAmount is zero");
         lfgToken.transfer(msg.sender, addrTokens[msg.sender].claimableAmount);
-        uint256 claimedAmount = addrTokens[msg.sender].claimableAmount;
+
+        emit ClaimToken(msg.sender, addrTokens[msg.sender].claimableAmount);
+
         totalEscrowAmount -= addrTokens[msg.sender].claimableAmount;
         addrTokens[msg.sender].claimableAmount = 0;
-
-        emit ClaimToken(msg.sender, claimedAmount);
     }
 
+    /*
+     * @notice The highest bidder claim the NFT he bought.
+     * @dev Can only claim after the auction period finished.
+     */
     function claimNft(bytes32 biddingId) external nonReentrant {
         bidding storage bid = biddingRegistry[biddingId];
         require(bid.bidder == msg.sender, "Only bidder can claim NFT");
@@ -569,5 +610,17 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     function updateRevenueAddress(address _revenueAddress) external onlyOwner {
         require(_revenueAddress != address(0), "Invalid revenue address");
         revenueAddress = _revenueAddress;
+    }
+
+    function setNftContractWhitelist(address _addr, bool _isWhitelist) external onlyOwner {
+        require(_addr != address(0), "Invalid NFT contract address");
+        require(
+            IERC165(_addr).supportsInterface(_INTERFACE_ID_ERC721),
+            "Invalid NFT token contract address"
+        );
+
+        nftContractWhiteLists[_addr] = _isWhitelist;
+
+        emit SetNftContractWhitelist(_addr, _isWhitelist);
     }
 }

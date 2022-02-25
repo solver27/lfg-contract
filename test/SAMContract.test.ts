@@ -30,6 +30,9 @@ describe("SAMContract", function () {
 
       await LFGNFT.setMinter(minter, true);
 
+      // This one must call from owner
+      await SAMContract.setNftContractWhitelist(LFGNFT.address, true, {from: minter});
+
     } catch (err) {
       console.log(err);
     }
