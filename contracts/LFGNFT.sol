@@ -23,24 +23,23 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     // creators
     mapping(uint256 => address) public creators;
 
-    // royalties
-    mapping(uint256 => uint16) private royalties;
+    struct RoyaltyInfo {
+        address receiver;   // The payment receiver of royalty
+        uint16 rate;        // The rate of the payment
+    }
 
-    // royalty percentage
-    uint16 public royaltyPercent;
+    // royalties
+    mapping(uint256 => RoyaltyInfo) private royalties;
 
     // MAX royalty percent
-    uint16 public constant MAX_ROYALTY = 1000;
+    uint16 public constant MAX_ROYALTY = 5000;
 
     modifier onlyMinter() {
         require(minters[msg.sender], "NFT: Invalid minter");
         _;
     }
 
-    constructor(uint16 _royaltyPercent) ERC721("LFGNFT", "LFGNFT") {
-        require(_royaltyPercent <= MAX_ROYALTY, "NFT: Invalid royalty percentage");
-
-        royaltyPercent = _royaltyPercent;
+    constructor() ERC721("LFGNFT", "LFGNFT") {
     }
 
     /**************************
@@ -51,12 +50,15 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
         require(_to != address(0), "NFT: invalid address");
 
         for (uint256 i = 0; i < _qty; i++) {
-            _safeMint(_to, totalSupply() + 1);
+            // Using tokenId in the loop instead of totalSupply() + 1,
+            // because totalSupply() changed after _safeMint function call.
+            uint256 tokenId = totalSupply() + 1;
+            _safeMint(_to, tokenId);
 
             if (msg.sender == tx.origin) {
-                creators[totalSupply() + 1] = msg.sender;
+                creators[tokenId] = msg.sender;
             } else {
-                creators[totalSupply() + 1] = address(0);
+                creators[tokenId] = address(0);
             }
         }
     }
@@ -120,17 +122,17 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
         view
         returns (address receiver, uint256 royaltyAmount)
     {
-        receiver = creators[_tokenId];
-        royaltyAmount = creators[_tokenId] == address(0)
-            ? 0
-            : (_salePrice * (royalties[_tokenId] == 0 ? royaltyPercent : royalties[_tokenId])) /
-                10000;
+        receiver = royalties[_tokenId].receiver;
+        if (royalties[_tokenId].rate > 0) {
+            royaltyAmount = _salePrice * royalties[_tokenId].rate / 10000;
+        }
     }
 
-    function setRoyalty(uint256 _tokenId, uint16 _royalty) external {
+    function setRoyalty(uint256 _tokenId, address receiver, uint16 _royalty) external {
         require(creators[_tokenId] == msg.sender, "NFT: Invalid creator");
         require(_royalty <= MAX_ROYALTY, "NFT: Invalid royalty percentage");
 
-        royalties[_tokenId] = _royalty;
+        royalties[_tokenId].receiver = receiver;
+        royalties[_tokenId].rate = _royalty;
     }
 }
