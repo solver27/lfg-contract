@@ -1,13 +1,13 @@
 const {expect} = require("chai");
 const hre = require("hardhat");
 const {web3} = require("hardhat");
-const LFGNFTArt = hre.artifacts.require("LFGNFT");
+const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
 const NftAirdropArt = hre.artifacts.require("NftAirdrop");
 const BN = require("bn.js");
 const {createImportSpecifier} = require("typescript");
 
 describe("NftAirdrop", function () {
-  let LFGNFT = null;
+  let LFGFireNFT = null;
   let NftAirdrop = null;
   let accounts = ["", ""],
     minter;
@@ -17,9 +17,9 @@ describe("NftAirdrop", function () {
   before("Deploy contract", async function () {
     try {
       [accounts[0], accounts[1], minter] = await web3.eth.getAccounts();
-      LFGNFT = await LFGNFTArt.new();
-      NftAirdrop = await NftAirdropArt.new(LFGNFT.address);
-      await LFGNFT.setMinter(NftAirdrop.address, true);
+      LFGFireNFT = await LFGFireNFTArt.new();
+      NftAirdrop = await NftAirdropArt.new(LFGFireNFT.address);
+      await LFGFireNFT.setMinter(NftAirdrop.address, true);
     } catch (err) {
       console.log(err);
     }
@@ -31,7 +31,7 @@ describe("NftAirdrop", function () {
     await hre.network.provider.send("evm_mine");
     await NftAirdrop.addWhitelists([accounts[1]], [airDropNftAmount]);
 
-    let minterResult = await LFGNFT.minters(NftAirdrop.address);
+    let minterResult = await LFGFireNFT.minters(NftAirdrop.address);
     console.log("Get minter result ", minterResult.toString());
 
     const whitelistInfo = await NftAirdrop.whitelistPools(accounts[1]);
@@ -43,8 +43,8 @@ describe("NftAirdrop", function () {
     expect(new BN(whitelistInfoAfter.nftAmount).toString()).to.equal(airDropNftAmount.toString());
     expect(new BN(whitelistInfoAfter.distributedAmount).toString()).to.equal(airDropNftAmount.toString());
 
-    const nftBalance = await LFGNFT.balanceOf(accounts[1]);
-    console.log("nftBalance ", nftBalance);
+    const nftBalance = await LFGFireNFT.balanceOf(accounts[1]);
+    console.log("nftBalance ", nftBalance.toString());
     expect(new BN(nftBalance).toString()).to.equal(airDropNftAmount.toString());
   });
 });
