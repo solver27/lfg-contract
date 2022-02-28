@@ -123,13 +123,14 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
         returns (address receiver, uint256 royaltyAmount)
     {
         receiver = royalties[_tokenId].receiver;
-        if (royalties[_tokenId].rate > 0) {
+        if (royalties[_tokenId].rate > 0 && royalties[_tokenId].receiver != address(0)) {
             royaltyAmount = _salePrice * royalties[_tokenId].rate / 10000;
         }
     }
 
     function setRoyalty(uint256 _tokenId, address receiver, uint16 _royalty) external {
         require(creators[_tokenId] == msg.sender, "NFT: Invalid creator");
+        require(receiver != address(0), "NFT: invalid royalty receiver");
         require(_royalty <= MAX_ROYALTY, "NFT: Invalid royalty percentage");
 
         royalties[_tokenId].receiver = receiver;
