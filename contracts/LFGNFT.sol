@@ -17,9 +17,6 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     // MAX supply of collection
     uint256 public constant MAX_SUPPLY = 10000;
 
-    // minters
-    mapping(address => bool) public minters;
-
     // creators
     mapping(uint256 => address) public creators;
 
@@ -34,18 +31,13 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 5000;
 
-    modifier onlyMinter() {
-        require(minters[msg.sender], "NFT: Invalid minter");
-        _;
-    }
-
     constructor() ERC721("LFGNFT", "LFGNFT") {
     }
 
     /**************************
      ***** MINT FUNCTIONS *****
      *************************/
-    function mint(uint256 _qty, address _to) external onlyMinter {
+    function mint(uint256 _qty, address _to) external {
         require(totalSupply() + _qty <= MAX_SUPPLY, "NFT: out of stock");
         require(_to != address(0), "NFT: invalid address");
 
@@ -104,12 +96,6 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
 
     function setBaseURI(string memory _newBaseURI) external onlyOwner {
         baseURI = _newBaseURI;
-    }
-
-    function setMinter(address _account, bool _isMinter) external onlyOwner {
-        require(_account != address(0), "NFT: invalid address");
-
-        minters[_account] = _isMinter;
     }
 
     function clearStuckTokens(IERC20 erc20) external onlyOwner {

@@ -15,16 +15,12 @@ describe("LFGNFT", function () {
     try {
       [accounts[0], accounts[1], minter] = await web3.eth.getAccounts();
       LFGNFT = await LFGNFTArt.new();
-      await LFGNFT.setMinter(minter, true);
     } catch (err) {
       console.log(err);
     }
   });
 
   it("test NFT Royalties", async function () {
-    let minterResult = await LFGNFT.minters(minter);
-    console.log("Get minter result ", minterResult.toString());
-
     await LFGNFT.mint(1, accounts[1], {from: minter} );
     const nftBalance = await LFGNFT.balanceOf(accounts[1]);
     console.log("nftBalance ", nftBalance.toString());
