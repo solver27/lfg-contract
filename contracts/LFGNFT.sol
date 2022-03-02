@@ -45,9 +45,41 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
 
     event SetMaxBatchQuantity(uint256 maxBatchQuantity);
 
+    /**
+     * @dev Mapping of interface ids to whether or not it's supported.
+     */
+    mapping(bytes4 => bool) private _supportedInterfaces;
+
+    bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
+
     constructor() ERC721("LFGNFT", "LFGNFT") {
+        _registerInterface(_INTERFACE_ID_ERC2981);
+
         maxSupply = 10000;
         maxBatchQuantity = 10;
+    }
+
+    /**
+     * @dev Registers the contract as an implementer of the interface defined by
+     * `interfaceId`. Support of the actual ERC165 interface is automatic and
+     * registering its interface id is not required.
+     *
+     * See {IERC165-supportsInterface}.
+     *
+     * Requirements:
+     *
+     * - `interfaceId` cannot be the ERC165 invalid interface (`0xffffffff`).
+     */
+    function _registerInterface(bytes4 interfaceId) internal virtual {
+        require(interfaceId != 0xffffffff, "ERC165: invalid interface id");
+        _supportedInterfaces[interfaceId] = true;
+    }
+
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable, IERC165) returns (bool) {
+        return super.supportsInterface(interfaceId) || _supportedInterfaces[interfaceId];
     }
 
     /**************************

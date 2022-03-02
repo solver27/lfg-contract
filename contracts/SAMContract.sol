@@ -174,7 +174,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     /// @param _contract - the address of the NFT contract to query
     /// @return true if ERC-2981 interface is supported, false otherwise
     function _checkRoyalties(address _contract) internal view returns (bool) {
-        bool success = IERC2981(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
+        bool success = ERC721(_contract).supportsInterface(_INTERFACE_ID_ERC2981);
         return success;
     }
 
