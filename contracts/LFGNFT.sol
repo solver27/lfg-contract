@@ -37,6 +37,14 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 5000;
 
+    event Minted(address indexed minter, uint256 qty, address indexed to);
+
+    event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
+
+    event SetMaxSupply(uint256 maxSupply);
+
+    event SetMaxBatchQuantity(uint256 maxBatchQuantity);
+
     constructor() ERC721("LFGNFT", "LFGNFT") {
         maxSupply = 10000;
         maxBatchQuantity = 10;
@@ -62,6 +70,8 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
                 creators[tokenId] = address(0);
             }
         }
+
+        emit Minted(msg.sender, _qty, _to);
     }
 
     function adminMint(uint256 _qty, address _to) external onlyOwner {
@@ -123,22 +133,28 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
         }
     }
 
-    function setRoyalty(uint256 _tokenId, address receiver, uint16 _royalty) external {
+    function setRoyalty(uint256 _tokenId, address _receiver, uint16 _royalty) external {
         require(creators[_tokenId] == msg.sender, "NFT: Invalid creator");
-        require(receiver != address(0), "NFT: invalid royalty receiver");
+        require(_receiver != address(0), "NFT: invalid royalty receiver");
         require(_royalty <= MAX_ROYALTY, "NFT: Invalid royalty percentage");
 
-        royalties[_tokenId].receiver = receiver;
+        royalties[_tokenId].receiver = _receiver;
         royalties[_tokenId].rate = _royalty;
+
+        emit SetRoyalty(_tokenId, _receiver, _royalty);
     }
 
     function setMaxSupply(uint256 _maxSupply) external onlyOwner {
         require(_maxSupply > maxSupply, "The max supply should larger than current value");
         maxSupply = _maxSupply;
+
+        emit SetMaxSupply(_maxSupply);
     }
 
     function setMaxBatchQuantity(uint256 _batchQuantity) external onlyOwner {
         require(_batchQuantity >= 1 && _batchQuantity <= MAX_BATCH_QUANTITY, "Max batch quantity should between 1 to 1000");
         maxBatchQuantity = _batchQuantity;
+
+        emit SetMaxBatchQuantity(_batchQuantity);
     }
 }
