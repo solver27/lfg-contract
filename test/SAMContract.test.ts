@@ -312,12 +312,16 @@ describe("SAMContract", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(SAMContract.address, 1, { from: accounts[2] });
+    const lastIndex = account2TokenIds.length - 1;
+
+    await LFGNFT.setRoyalty(account2TokenIds[lastIndex], accounts[6], 2000, { from: minter });
+
+    await LFGNFT.approve(SAMContract.address, account2TokenIds[lastIndex], { from: accounts[2] });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[lastIndex], "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
       false, 0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
@@ -341,11 +345,11 @@ describe("SAMContract", function () {
 
     account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account0 ", JSON.stringify(account2TokenIds));
-    assert.equal(account2TokenIds[0], "2");
+    assert.equal(account2TokenIds[0], "3");
 
     let account2Tokens = await SAMContract.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(account2Tokens["claimableAmount"], "20000000");
+    assert.equal(account2Tokens["claimableAmount"], "16000000");
 
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
@@ -359,13 +363,13 @@ describe("SAMContract", function () {
     console.log("After claim, Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
     balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.equal(balanceOfAccount2.toString(), "20000000");
+    assert.equal(balanceOfAccount2.toString(), "59800000"); // 43800000 + 1600000
 
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
 
-    let burnAmount = await LFGToken.balanceOf(burnAddress);
-    console.log("Burn amount ", burnAmount.toString());
-    assert.equal(burnAmount.toString(), "250000");
+    let account6Tokens = await SAMContract.addrTokens(accounts[6]);
+    console.log("Received royalties amount ", account6Tokens["claimableAmount"]);
+    assert.equal(account6Tokens["claimableAmount"], "4000000");
   });
 });
