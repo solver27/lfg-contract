@@ -15,7 +15,13 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     string public baseURI;
 
     // MAX supply of collection
-    uint256 public constant MAX_SUPPLY = 10000;
+    uint256 public maxSupply;
+
+    // Max batch quantity limit
+    uint256 public constant MAX_BATCH_QUANTITY = 1000;
+
+    // Max quantity can mint each time
+    uint256 public maxBatchQuantity;
 
     // creators
     mapping(uint256 => address) public creators;
@@ -32,14 +38,17 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     uint16 public constant MAX_ROYALTY = 5000;
 
     constructor() ERC721("LFGNFT", "LFGNFT") {
+        maxSupply = 10000;
+        maxBatchQuantity = 10;
     }
 
     /**************************
      ***** MINT FUNCTIONS *****
      *************************/
     function mint(uint256 _qty, address _to) external {
-        require(totalSupply() + _qty <= MAX_SUPPLY, "NFT: out of stock");
+        require(totalSupply() + _qty <= maxSupply, "NFT: out of stock");
         require(_to != address(0), "NFT: invalid address");
+        require(_qty <= maxBatchQuantity, "NFT: cannot mint over max batch quantity");
 
         for (uint256 i = 0; i < _qty; i++) {
             // Using tokenId in the loop instead of totalSupply() + 1,
@@ -58,7 +67,7 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     function adminMint(uint256 _qty, address _to) external onlyOwner {
         require(_qty != 0, "NFT: minitum 1 nft");
         require(_to != address(0), "NFT: invalid address");
-        require(totalSupply() + _qty <= MAX_SUPPLY, "NFT: max supply reached");
+        require(totalSupply() + _qty <= maxSupply, "NFT: max supply reached");
 
         for (uint256 i = 0; i < _qty; i++) {
             _safeMint(_to, totalSupply() + 1);
@@ -121,5 +130,15 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
 
         royalties[_tokenId].receiver = receiver;
         royalties[_tokenId].rate = _royalty;
+    }
+
+    function setMaxSupply(uint256 _maxSupply) external onlyOwner {
+        require(_maxSupply > maxSupply, "The max supply should larger than current value");
+        maxSupply = _maxSupply;
+    }
+
+    function setMaxBatchQuantity(uint256 _batchQuantity) external onlyOwner {
+        require(_batchQuantity >= 1 && _batchQuantity <= MAX_BATCH_QUANTITY, "Max batch quantity should between 1 to 1000");
+        maxBatchQuantity = _batchQuantity;
     }
 }
