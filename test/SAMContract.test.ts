@@ -1,6 +1,4 @@
-const { assert } = require("chai");
-
-const { expect } = require("chai");
+const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
@@ -27,8 +25,6 @@ describe("SAMContract", function () {
       LFGNFT = await LFGNFTArt.new();
 
       SAMContract = await SAMContractArt.new(minter, LFGToken.address, burnAddress, revenueAddress);
-
-      await LFGNFT.setMinter(minter, true);
 
       // This one must call from owner
       await SAMContract.setNftContractWhitelist(LFGNFT.address, true, {from: minter});
