@@ -1,6 +1,4 @@
-const { assert } = require("chai");
-
-const { expect } = require("chai");
+const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
@@ -28,10 +26,11 @@ describe("SAMContract", function () {
 
       SAMContract = await SAMContractArt.new(minter, LFGToken.address, burnAddress, revenueAddress);
 
-      await LFGNFT.setMinter(minter, true);
-
       // This one must call from owner
-      await SAMContract.setNftContractWhitelist(LFGNFT.address, true, {from: minter});
+      await SAMContract.setNftContractWhitelist(LFGNFT.address, true, { from: minter });
+
+      // 10% royalties fee
+      await SAMContract.updateroyaltiesFeeRate(1000, { from: minter });
 
     } catch (err) {
       console.log(err);
@@ -370,6 +369,6 @@ describe("SAMContract", function () {
 
     let account6Tokens = await SAMContract.addrTokens(accounts[6]);
     console.log("Received royalties amount ", account6Tokens["claimableAmount"]);
-    assert.equal(account6Tokens["claimableAmount"], "4000000");
+    assert.equal(account6Tokens["claimableAmount"], "3600000"); // Because charged 10% royalties fee, so 4000000 becomes 3600000
   });
 });

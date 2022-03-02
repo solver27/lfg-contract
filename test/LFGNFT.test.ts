@@ -1,4 +1,4 @@
-const {expect} = require("chai");
+const {assert, expect} = require("chai");
 const hre = require("hardhat");
 const {web3} = require("hardhat");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
@@ -15,16 +15,12 @@ describe("LFGNFT", function () {
     try {
       [accounts[0], accounts[1], minter] = await web3.eth.getAccounts();
       LFGNFT = await LFGNFTArt.new();
-      await LFGNFT.setMinter(minter, true);
     } catch (err) {
       console.log(err);
     }
   });
 
   it("test NFT Royalties", async function () {
-    let minterResult = await LFGNFT.minters(minter);
-    console.log("Get minter result ", minterResult.toString());
-
     await LFGNFT.mint(1, accounts[1], {from: minter} );
     const nftBalance = await LFGNFT.balanceOf(accounts[1]);
     console.log("nftBalance ", nftBalance.toString());
@@ -47,4 +43,17 @@ describe("LFGNFT", function () {
     assert.equal(royaltyInfo["receiver"], accounts[1]);
     assert.equal(royaltyInfo["royaltyAmount"], "1000");
   });
+
+  it("test NFT Royalties", async function () {
+    await expect(
+      LFGNFT.mint(11, accounts[1], {from: minter} )
+    ).to.be.revertedWith("NFT: cannot mint over max batch quantity");
+
+    await LFGNFT.setMaxBatchQuantity(20, {from: accounts[0]});
+
+    let getMaxBatchQuantity = await LFGNFT.maxBatchQuantity();
+    assert.equal(getMaxBatchQuantity.toString(), "20");
+
+    await LFGNFT.mint(11, accounts[1], {from: minter} );
+  });  
 });
