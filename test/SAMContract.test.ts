@@ -79,20 +79,16 @@ describe("SAMContract", function () {
     console.log("tokenIds of account0 ", JSON.stringify(account2TokenIds));
     assert.equal(account2TokenIds[0], "2");
 
-    let account2Tokens = await SAMContract.addrTokens(accounts[2]);
-    console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(account2Tokens["claimableAmount"], "20000000");
-
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
 
     const account1Tokens = await SAMContract.addrTokens(accounts[1]);
     console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
 
-    await SAMContract.claimToken({ from: accounts[2] });
+    // await SAMContract.claimToken({ from: accounts[2] });
 
-    account2Tokens = await SAMContract.addrTokens(accounts[2]);
-    console.log("After claim, Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
+    // account2Tokens = await SAMContract.addrTokens(accounts[2]);
+    // console.log("After claim, Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
     balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.equal(balanceOfAccount2.toString(), "20000000");
@@ -166,22 +162,11 @@ describe("SAMContract", function () {
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
 
-    let account2Tokens = await SAMContract.addrTokens(accounts[2]);
-    console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(account2Tokens["claimableAmount"], "15000000");
-
-    // Check the refunding bidding to account 3.
-    let account3Tokens = await SAMContract.addrTokens(accounts[3]);
-    console.log("Escrow tokens of account 3 ", JSON.stringify(account3Tokens));
-    assert.equal(account3Tokens["claimableAmount"], "11000000");
-
-    await SAMContract.claimToken({ from: accounts[2] });
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.equal(balanceOfAccount2.toString(), "35000000");
 
-    // Account 3 claim back his bidding
-    await SAMContract.claimToken({ from: accounts[3] });
+    // Account 3 bid failed, should be auto refunded
     let balanceOfAccount3 = await LFGToken.balanceOf(accounts[3]);
     console.log("Balance of account 3 ", balanceOfAccount3.toString());
     assert.equal(balanceOfAccount3.toString(), testDepositAmount);
@@ -193,9 +178,9 @@ describe("SAMContract", function () {
     let revenueAmount = await SAMContract.revenueAmount();
     assert.equal(revenueAmount.toString(), "437500");
 
-    let sweepedAmount = await LFGToken.balanceOf(revenueAddress);
-    console.log("Sweep amount ", sweepedAmount.toString());
-    assert.equal(sweepedAmount.toString(), "437500");
+    let revenueBalance = await LFGToken.balanceOf(revenueAddress);
+    console.log("Revenue account balance ", revenueBalance.toString());
+    assert.equal(revenueBalance.toString(), "437500");
   });
 
   it("test remove listing ", async function () {
@@ -270,20 +255,12 @@ describe("SAMContract", function () {
     console.log("tokenIds of account 1 ", JSON.stringify(account1TokenIds));
     assert.equal(account1TokenIds[1], "4");
 
-    let account2Tokens = await SAMContract.addrTokens(accounts[2]);
-    console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(account2Tokens["claimableAmount"], "8800000");
-
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
 
     const account1Tokens = await SAMContract.addrTokens(accounts[1]);
     console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
 
-    await SAMContract.claimToken({ from: accounts[2] });
-
-    account2Tokens = await SAMContract.addrTokens(accounts[2]);
-    console.log("After claim, Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
     balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.equal(balanceOfAccount2.toString(), "43800000");
@@ -291,6 +268,7 @@ describe("SAMContract", function () {
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
 
+    // The price is 8800000, charge 2.5% fee, and burn 50% of the fee, so burn 110000, revenue 110000
     let burnAccBal = await LFGToken.balanceOf(burnAddress);
     console.log("burnAccBal ", burnAccBal.toString());
     assert.equal(burnAccBal.toString(), "547500");
@@ -298,6 +276,14 @@ describe("SAMContract", function () {
     let totalBurnAmount = await SAMContract.totalBurnAmount();
     console.log("totalBurnAmount ", burnAccBal.toString());
     assert.equal(totalBurnAmount.toString(), "547500");
+
+    // Increased renuve 8800000 * 2.5% * 50% = 110000
+    let revenueAmount = await SAMContract.revenueAmount();
+    assert.equal(revenueAmount.toString(), "547500");
+
+    let revenueBalance = await LFGToken.balanceOf(revenueAddress);
+    console.log("Revenue account balance ", revenueBalance.toString());
+    assert.equal(revenueBalance.toString(), "547500");
   });
 
   it("test royalties payment after sell", async function () {
@@ -338,6 +324,10 @@ describe("SAMContract", function () {
 
     await SAMContract.buyNow(listingId, { from: accounts[1] });
 
+    let account1Tokens = await SAMContract.addrTokens(accounts[1]);
+    console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
+    assert.equal(account1Tokens.toString(), "0");
+
     let account1TokenIds = await LFGNFT.tokensOfOwner(accounts[1]);
     console.log("tokenIds of account 1 ", JSON.stringify(account1TokenIds));
     assert.equal(account1TokenIds[0], "1");
@@ -346,20 +336,9 @@ describe("SAMContract", function () {
     console.log("tokenIds of account0 ", JSON.stringify(account2TokenIds));
     assert.equal(account2TokenIds[0], "3");
 
-    let account2Tokens = await SAMContract.addrTokens(accounts[2]);
-    console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(account2Tokens["claimableAmount"], "16000000");
-
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
 
-    const account1Tokens = await SAMContract.addrTokens(accounts[1]);
-    console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
-
-    await SAMContract.claimToken({ from: accounts[2] });
-
-    account2Tokens = await SAMContract.addrTokens(accounts[2]);
-    console.log("After claim, Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
     balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.equal(balanceOfAccount2.toString(), "59800000"); // 43800000 + 1600000
@@ -367,8 +346,17 @@ describe("SAMContract", function () {
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
 
-    let account6Tokens = await SAMContract.addrTokens(accounts[6]);
-    console.log("Received royalties amount ", account6Tokens["claimableAmount"]);
-    assert.equal(account6Tokens["claimableAmount"], "3600000"); // Because charged 10% royalties fee, so 4000000 becomes 3600000
+    let balanceOfAccount6 = await LFGToken.balanceOf(accounts[6]);
+    console.log("Balance of account 6 ", balanceOfAccount6.toString());
+    assert.equal(balanceOfAccount6.toString(), "3600000"); // Because charged 10% royalties fee, so 4000000 becomes 3600000
+
+    // Incresed revenue = 20000000 * 2.5% * 50% + 20000000 * 20% * 10% = 650000
+    // Last step revenue is 547500, so total revenue is 547500 + 650000 = 1197500
+    let revenueAmount = await SAMContract.revenueAmount();
+    assert.equal(revenueAmount.toString(), "1197500");
+
+    let revenueBalance = await LFGToken.balanceOf(revenueAddress);
+    console.log("Revenue account balance ", revenueBalance.toString());
+    assert.equal(revenueBalance.toString(), "1197500");
   });
 });
