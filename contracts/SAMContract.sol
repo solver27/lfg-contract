@@ -148,7 +148,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
     struct userToken {
         uint256 lockedAmount;
-        uint256 claimableAmount;
     }
 
     mapping(address => userToken) public addrTokens;
@@ -195,7 +194,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
             uint256 royaltyFee = (royaltiesAmount * royaltiesFeeRate) / FEE_RATE_BASE;
             if (royaltyFee > 0) {
                 _transferToken(msg.sender, revenueAddress, royaltyFee);
-                revenueAmount = royaltyFee;
+                revenueAmount += royaltyFee;
 
                 emit RoyaltiesFeePaid(_contract, tokenId, royaltyFee);
             }
@@ -408,6 +407,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
         _processFee(msg.sender, price);
 
+        // Deposit the tokens to market place contract.
         _depositToken(msg.sender, price);
 
         uint256 sellerAmount = price;
@@ -448,20 +448,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         delete listingRegistry[listingId];
 
         emit ListingRemoved(listingId, seller);
-    }
-
-    /*
-     * @notice The NFT seller or failed bidder can claim the token back.
-     * @dev All the available token under his account will be claimed.
-     */
-    function claimToken() external nonReentrant {
-        require(addrTokens[msg.sender].claimableAmount > 0, "The claimableAmount is zero");
-        lfgToken.transfer(msg.sender, addrTokens[msg.sender].claimableAmount);
-
-        emit ClaimToken(msg.sender, addrTokens[msg.sender].claimableAmount);
-
-        totalEscrowAmount -= addrTokens[msg.sender].claimableAmount;
-        addrTokens[msg.sender].claimableAmount = 0;
     }
 
     /*
@@ -577,7 +563,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 _amount
     ) internal {
         require(addrTokens[from].lockedAmount >= _amount, "The locked amount is not enough");
-        addrTokens[to].claimableAmount += _amount;
+        lfgToken.transfer(to, _amount);
         addrTokens[from].lockedAmount -= _amount;
     }
 
