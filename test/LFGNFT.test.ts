@@ -7,7 +7,6 @@ const {createImportSpecifier} = require("typescript");
 
 describe("LFGNFT", function () {
   let LFGNFT = null;
-  let NftAirdrop = null;
   let accounts = ["", ""],
     minter;
 

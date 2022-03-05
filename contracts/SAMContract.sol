@@ -8,10 +8,10 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/IERC2981.sol";
+import "./interfaces/IBurnToken.sol";
 
 contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     event ListingPlaced(
@@ -38,14 +38,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     event ClaimNFT(bytes32 indexed listingId, bytes32 indexed biddingId, address indexed buyer);
 
     event ClaimToken(address indexed addr, uint256 amount);
-
-    event NewFeeRate(uint256 feeRate);
-
-    event NewFeeBurnRate(uint256 burnRate);
-
-    event NewRoyaltiesFeeRate(uint256 royaltiesFeeRate);
-
-    event RevenueSweep(address indexed to, uint256 amount);
 
     event NftDeposit(address indexed sender, address indexed hostContract, uint256 tokenId);
 
@@ -136,6 +128,14 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     // Total revenue amount
     uint256 public revenueAmount;
 
+    // The Fire NFT contract address
+    address public fireNftContractAddress;
+
+    //uint256 public burnOnFireNftRate;
+
+    //address public burnFromAddress;
+    IBurnToken public burnTokenContract;
+
     IERC20 public lfgToken;
 
     struct nftItem {
@@ -167,6 +167,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
         feeRate = 250; // 2.5%
         feeBurnRate = 5000; // 50%
+        royaltiesFeeRate = 1000; // Default 10% royalties fee.
     }
 
     /// @notice Checks if NFT contract implements the ERC-2981 interface
@@ -210,36 +211,23 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     }
 
     /*
-     * @notice Update the fee rate
+     * @notice Update the fee rate and burn fee rate from the burn amount
      * @dev Only callable by owner.
      * @param _fee: the fee rate
+     * @param _burnRate: the burn fee rate
      */
-    function updateFeeRate(uint256 _feeRate) external onlyOwner {
+    function updateFeeRate(
+        uint256 _feeRate,
+        uint256 _feeBurnRate,
+        uint256 _royaltiesFeeRate
+    ) external onlyOwner {
         require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
+        require(_feeBurnRate <= FEE_RATE_BASE, "Invalid fee burn rate");
+        require(_royaltiesFeeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
+
         feeRate = _feeRate;
-        emit NewFeeRate(_feeRate);
-    }
-
-    /*
-     * @notice Update the fee rate
-     * @dev Only callable by owner.
-     * @param _fee: the fee rate
-     */
-    function updateFeeBurnRate(uint256 _burnRate) external onlyOwner {
-        require(_burnRate <= MAXIMUM_FEE_BURN_RATE, "Invalid fee rate");
-        feeBurnRate = _burnRate;
-        emit NewFeeBurnRate(_burnRate);
-    }
-
-    /*
-     * @notice Update the royalty fee rate
-     * @dev Only callable by owner.
-     * @param _fee: the fee rate
-     */
-    function updateroyaltiesFeeRate(uint256 _feeRate) external onlyOwner {
-        require(_feeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
-        royaltiesFeeRate = _feeRate;
-        emit NewRoyaltiesFeeRate(_feeRate);
+        feeBurnRate = _feeBurnRate;
+        royaltiesFeeRate = _royaltiesFeeRate;
     }
 
     /*
@@ -418,6 +406,10 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         _transferToken(msg.sender, lst.seller, sellerAmount);
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
+        if (lst.hostContract == fireNftContractAddress) {
+            _burnTokenOnFireNft(price);
+        }
+
         emit BuyNow(listingId, msg.sender, price);
 
         // Refund the failed bidder
@@ -480,6 +472,10 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
         _transferToken(msg.sender, lst.seller, sellerAmount);
 
+        if (lst.hostContract == fireNftContractAddress) {
+            _burnTokenOnFireNft(bid.price);
+        }
+
         emit ClaimNFT(lst.id, biddingId, msg.sender);
 
         // Refund the failed bidder
@@ -503,8 +499,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
             lst.startTime + lst.auctionDuration < block.timestamp,
             "The listing haven't expired"
         );
-        require(lst.seller == msg.sender, "Only seller can remove the listing");
-        require(lst.biddingIds.length == 0, "Already received bidding, cannot close it");
+        require(lst.seller == msg.sender, "Only seller can remove");
+        require(lst.biddingIds.length == 0, "Already received bidding, cannot close");
 
         // return the NFT to seller
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
@@ -565,6 +561,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         require(addrTokens[from].lockedAmount >= _amount, "The locked amount is not enough");
         lfgToken.transfer(to, _amount);
         addrTokens[from].lockedAmount -= _amount;
+        totalEscrowAmount -= _amount;
     }
 
     /**
@@ -580,21 +577,18 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     }
 
     /*
-     * @notice Update the burn address
+     * @notice Set the burn and revenue address, combine into one function to reduece contract size.
      * @dev Only callable by owner.
-     * @param _fee: the burn address
+     * @param _burnAddress: the burn address
+     * @param _revenueAddress: the revenue address
      */
-    function updateBurnAddress(address _burnAddress) external onlyOwner {
-        burnAddress = _burnAddress;
-    }
-
-    /*
-     * @notice Update the revenue address
-     * @dev Only callable by owner.
-     * @param _fee: the revenue address
-     */
-    function updateRevenueAddress(address _revenueAddress) external onlyOwner {
+    function setBurnAndRevenueAddress(address _burnAddress, address _revenueAddress)
+        external
+        onlyOwner
+    {
         require(_revenueAddress != address(0), "Invalid revenue address");
+
+        burnAddress = _burnAddress;
         revenueAddress = _revenueAddress;
     }
 
@@ -608,5 +602,18 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         nftContractWhiteLists[_addr] = _isWhitelist;
 
         emit SetNftContractWhitelist(_addr, _isWhitelist);
+    }
+
+    function setFireNftContractInfo(address _address, IBurnToken _burnTokenAddr)
+        external
+        onlyOwner
+    {
+        require(_address != address(0), "Invalid address");
+        fireNftContractAddress = _address;
+        burnTokenContract = _burnTokenAddr;
+    }
+
+    function _burnTokenOnFireNft(uint256 price) internal {
+        burnTokenContract.burn(price);
     }
 }
