@@ -25,11 +25,14 @@ describe("BurnToken", function () {
   });
 
   it("test burn token feature", async function () {
-    const testDepositAmount = "100000000000000000000000";
+    const testDepositAmount = "10000";
     await LFGToken.transfer(BurnToken.address, testDepositAmount);
 
     let totalBurnAmount = await BurnToken.totalBurnAmount();
     assert.equal(totalBurnAmount.toString(), "0");
+
+    let contractBalance = await LFGToken.balanceOf(BurnToken.address);
+    assert.equal(contractBalance.toString(), "10000");
 
     await expect(
       BurnToken.burn(10000, { from: operator })
@@ -55,5 +58,12 @@ describe("BurnToken", function () {
 
     burnAddrBal = await LFGToken.balanceOf(burnAddress);
     assert.equal(burnAddrBal.toString(), "1500");
+
+    contractBalance = await LFGToken.balanceOf(BurnToken.address);
+    assert.equal(contractBalance.toString(), "8500");
+
+    await BurnToken.clearTokens({from: owner});
+    contractBalance = await LFGToken.balanceOf(BurnToken.address);
+    assert.equal(contractBalance.toString(), "0");
   });
 });
