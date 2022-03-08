@@ -37,6 +37,7 @@ contract BurnToken is IBurnToken, Ownable {
         IERC20 _token,
         address _burnAddress
     ) {
+        require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
         tokenContract = _token;
         burnAddress = _burnAddress;
@@ -51,8 +52,10 @@ contract BurnToken is IBurnToken, Ownable {
      */
     function burn(uint256 _price) external override onlyOperator {
         uint256 burnAmount = (burnRate * _price) / RATE_BASE;
-        tokenContract.transfer(burnAddress, burnAmount);
-        totalBurnAmount += burnAmount;
+        if (burnAmount > 0) {
+            tokenContract.transfer(burnAddress, burnAmount);
+            totalBurnAmount += burnAmount;
+        }
     }
 
     /*
@@ -63,7 +66,6 @@ contract BurnToken is IBurnToken, Ownable {
      */
     function setOperator(address _account, bool _enable) external onlyOwner {
         require(_account != address(0), "NFT: invalid address");
-
         operators[_account] = _enable;
     }
 
@@ -73,7 +75,9 @@ contract BurnToken is IBurnToken, Ownable {
      */
     function clearTokens() external onlyOwner {
         uint256 balance = tokenContract.balanceOf(address(this));
-        tokenContract.transfer(msg.sender, balance);
+        if (balance > 0) {
+            tokenContract.transfer(msg.sender, balance);
+        }
     }
 
     /*

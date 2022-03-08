@@ -160,6 +160,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         address _burnAddress,
         address _revenueAddress
     ) {
+        require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
         lfgToken = _lfgToken;
         burnAddress = _burnAddress;
