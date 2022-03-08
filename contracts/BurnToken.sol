@@ -7,6 +7,7 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IBurnToken.sol";
 
 contract BurnToken is IBurnToken, Ownable {
@@ -53,7 +54,7 @@ contract BurnToken is IBurnToken, Ownable {
     function burn(uint256 _price) external override onlyOperator {
         uint256 burnAmount = (burnRate * _price) / RATE_BASE;
         if (burnAmount > 0) {
-            tokenContract.transfer(burnAddress, burnAmount);
+            SafeERC20.safeTransfer(tokenContract, burnAddress, burnAmount);
             totalBurnAmount += burnAmount;
         }
     }
@@ -76,7 +77,7 @@ contract BurnToken is IBurnToken, Ownable {
     function clearTokens() external onlyOwner {
         uint256 balance = tokenContract.balanceOf(address(this));
         if (balance > 0) {
-            tokenContract.transfer(msg.sender, balance);
+            SafeERC20.safeTransfer(tokenContract, msg.sender, balance);
         }
     }
 
