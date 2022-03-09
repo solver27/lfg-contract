@@ -2,21 +2,26 @@ const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
+const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const SAMContractArt = hre.artifacts.require("SAMContract");
+const BurnTokenArt = hre.artifacts.require("BurnToken");
 const BN = require("bn.js");
 const { createImportSpecifier } = require("typescript");
 
 describe("SAMContract", function () {
   let LFGToken = null;
   let LFGNFT = null;
+  let LFGFireNFT = null;
   let SAMContract = null;
+  let BurnToken = null;
   let accounts = ["", "", "", "", "", "", ""],
-    minter, burnAddress, revenueAddress;
+    minter, burnAddress, revenueAddress, burnAddress1;
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5], accounts[6], minter, burnAddress, revenueAddress]
+      [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5], accounts[6],
+        minter, burnAddress, revenueAddress, burnAddress1]
         = await web3.eth.getAccounts();
       LFGToken = await LFGTokenArt.new("LFG Token",
         "LFG",
@@ -24,13 +29,19 @@ describe("SAMContract", function () {
 
       LFGNFT = await LFGNFTArt.new();
 
+      LFGFireNFT = await LFGFireNFTArt.new();
+
       SAMContract = await SAMContractArt.new(minter, LFGToken.address, burnAddress, revenueAddress);
 
       // This one must call from owner
       await SAMContract.setNftContractWhitelist(LFGNFT.address, true, { from: minter });
+      await SAMContract.setNftContractWhitelist(LFGFireNFT.address, true, { from: minter });
 
-      // 10% royalties fee
-      await SAMContract.updateroyaltiesFeeRate(1000, { from: minter });
+      // 2.5% fee, 50% of the fee burn, 10% royalties fee.
+      await SAMContract.updateFeeRate(250, 5000, 1000, { from: minter });
+
+      BurnToken = await BurnTokenArt.new(minter, LFGToken.address, burnAddress1);
+      await BurnToken.setOperator(SAMContract.address, true, { from: minter });
 
     } catch (err) {
       console.log(err);
@@ -85,10 +96,6 @@ describe("SAMContract", function () {
     const account1Tokens = await SAMContract.addrTokens(accounts[1]);
     console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
 
-    // await SAMContract.claimToken({ from: accounts[2] });
-
-    // account2Tokens = await SAMContract.addrTokens(accounts[2]);
-    // console.log("After claim, Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
     balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.equal(balanceOfAccount2.toString(), "20000000");
@@ -215,7 +222,7 @@ describe("SAMContract", function () {
 
     await expect(
       SAMContract.removeListing(listingId, { from: accounts[1] })
-    ).to.be.revertedWith("Only seller can remove the listing");
+    ).to.be.revertedWith("Only seller can remove");
 
     await SAMContract.removeListing(listingId, { from: accounts[2] });
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
@@ -358,5 +365,72 @@ describe("SAMContract", function () {
     let revenueBalance = await LFGToken.balanceOf(revenueAddress);
     console.log("Revenue account balance ", revenueBalance.toString());
     assert.equal(revenueBalance.toString(), "1197500");
+  });
+
+  it("test burn token when fire NFT was sold", async function () {
+    // Top up burn contract
+    await LFGToken.transfer(BurnToken.address, "100000000000000000000000");
+    await BurnToken.setBurnRate(1000, { from: minter });
+    await SAMContract.setFireNftContractInfo(LFGFireNFT.address, BurnToken.address, { from: minter });
+
+    let supply = await LFGFireNFT.totalSupply();
+    console.log("supply ", supply.toString());
+
+    await LFGFireNFT.adminMint(2, accounts[2], { from: accounts[0] });
+
+    supply = await LFGFireNFT.totalSupply();
+    console.log("supply ", supply.toString());
+    let account2TokenIds = await LFGFireNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
+
+    await LFGFireNFT.approve(SAMContract.address, 1, { from: accounts[2] });
+
+    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    console.log("latestBlock ", latestBlock);
+
+    await SAMContract.addListing(LFGFireNFT.address, account2TokenIds[0], "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+      false, 0, 0, { from: accounts[2] });
+
+    let listingResult = await SAMContract.listingOfAddr(accounts[2]);
+    console.log("getListingResult ", JSON.stringify(listingResult));
+    assert.equal(listingResult.length, 1);
+    let listingId = listingResult[0][0];
+
+    const testDepositAmount = "100000000000000000000000";
+    await LFGToken.transfer(accounts[1], testDepositAmount);
+
+    let balance = await LFGToken.balanceOf(accounts[1]);
+    console.log("account 1 balance ", balance.toString());
+
+    await LFGToken.approve(SAMContract.address, testDepositAmount, { from: accounts[1] });
+
+    await SAMContract.buyNow(listingId, { from: accounts[1] });
+
+    let account1TokenIds = await LFGFireNFT.tokensOfOwner(accounts[1]);
+    console.log("tokenIds of account 1 ", JSON.stringify(account1TokenIds));
+    assert.equal(account1TokenIds[0], "1");
+
+    account2TokenIds = await LFGFireNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account0 ", JSON.stringify(account2TokenIds));
+    assert.equal(account2TokenIds[0], "2");
+
+    let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
+    console.log("Balance of account 2 ", balanceOfAccount2.toString());
+
+    balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
+    console.log("Balance of account 2 ", balanceOfAccount2.toString());
+    assert.equal(balanceOfAccount2.toString(), "79800000");
+
+    listingResult = await SAMContract.listingOfAddr(accounts[2]);
+    assert.equal(listingResult.length, 0);
+
+    // Check on the burn address 1 which is for the burn token contract
+    let burnAddrBal = await LFGToken.balanceOf(burnAddress1);
+    console.log("Burn address balance ", burnAddrBal.toString());
+    assert.equal(burnAddrBal.toString(), "2000000");
+
+    // Check the burn amount
+    let totalBurnAmount = await BurnToken.totalBurnAmount();
+    assert.equal(totalBurnAmount.toString(), "2000000");
   });
 });

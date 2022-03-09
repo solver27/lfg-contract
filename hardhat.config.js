@@ -9,6 +9,7 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-truffle5");
 require("hardhat-typechain");
+require('hardhat-contract-sizer');
 
 //if (!process.env.MNEMONICS) throw new Error("MNEMONICS missing from .env file");
 if (!process.env.MUMBAI_PRIVKEY)
@@ -92,6 +93,13 @@ module.exports = {
   typechain: {
     outDir: "types/contracts",
     target: "truffle-v5",
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: true,
+    only: ['SAMContract'],
   },
 };
 
