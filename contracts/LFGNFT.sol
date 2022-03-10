@@ -85,7 +85,7 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     /**************************
      ***** MINT FUNCTIONS *****
      *************************/
-    function mint(uint256 _qty, address _to) external {
+    function mint(uint256 _qty, address _to) external override {
         require(totalSupply() + _qty <= maxSupply, "NFT: out of stock");
         require(_to != address(0), "NFT: invalid address");
         require(_qty <= maxBatchQuantity, "NFT: cannot mint over max batch quantity");
@@ -156,6 +156,7 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
 
     function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
         external
+        override
         view
         returns (address receiver, uint256 royaltyAmount)
     {
