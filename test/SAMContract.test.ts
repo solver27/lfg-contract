@@ -64,8 +64,8 @@ describe("SAMContract", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      false, 0, 0, { from: accounts[2] });
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "0", "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+      0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -79,6 +79,10 @@ describe("SAMContract", function () {
     console.log("account 1 balance ", balance.toString());
 
     await LFGToken.approve(SAMContract.address, testDepositAmount, { from: accounts[1] });
+
+    await expect(
+      SAMContract.placeBid(listingId, "10000000", { from: accounts[1] })
+    ).to.be.revertedWith("Can only bid for listing on auction");
 
     await SAMContract.buyNow(listingId, { from: accounts[1] });
 
@@ -112,8 +116,6 @@ describe("SAMContract", function () {
     let supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    //await LFGNFT.mint(2, accounts[2], {from: minter});
-
     supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
@@ -122,8 +124,8 @@ describe("SAMContract", function () {
     await LFGNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      false, 0, 0, { from: accounts[2] });
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 1, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+      0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -150,8 +152,8 @@ describe("SAMContract", function () {
     await SAMContract.placeBid(listingId, "12000000", { from: accounts[4] });
     await SAMContract.placeBid(listingId, "15000000", { from: accounts[5] });
 
-    const biddings = await SAMContract.biddingOfListing(listingId);
-    console.log("All biddings: ", JSON.stringify(biddings));
+    const biddings = await SAMContract.biddingOfAddr(accounts[3]);
+    console.log("Biddings of address: ", JSON.stringify(biddings));
 
     await expect(
       SAMContract.claimNft(biddings[0][0], { from: accounts[3] })
@@ -165,7 +167,9 @@ describe("SAMContract", function () {
       SAMContract.claimNft(biddings[0][0], { from: accounts[3] })
     ).to.be.revertedWith("The bidding is not the highest price");
 
-    await SAMContract.claimNft(biddings[2][0], { from: accounts[5] });
+    const biddingsOfAddr5 = await SAMContract.biddingOfAddr(accounts[5]);
+
+    await SAMContract.claimNft(biddingsOfAddr5[0][0], { from: accounts[5] });
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
 
@@ -204,8 +208,8 @@ describe("SAMContract", function () {
     await LFGNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      false, 0, 0, { from: accounts[2] });
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 1, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+      0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -237,8 +241,8 @@ describe("SAMContract", function () {
     await LFGNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
 
     let latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      true, 3600, 100000, { from: accounts[2] });
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 2, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+      3600, 100000, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -313,8 +317,8 @@ describe("SAMContract", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[lastIndex], "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      false, 0, 0, { from: accounts[2] });
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[lastIndex], 0, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+      0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -388,8 +392,8 @@ describe("SAMContract", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGFireNFT.address, account2TokenIds[0], "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      false, 0, 0, { from: accounts[2] });
+    await SAMContract.addListing(LFGFireNFT.address, account2TokenIds[0], 0, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+      0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));

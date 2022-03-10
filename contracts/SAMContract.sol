@@ -14,19 +14,24 @@ import "./interfaces/IERC2981.sol";
 import "./interfaces/IBurnToken.sol";
 
 contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
+    enum SellMode {
+        FixedPrice,
+        Auction,
+        DutchAuction
+    }
+
     event ListingPlaced(
         bytes32 indexed listingId,
         address indexed sender,
         address indexed hostContract,
         uint256 tokenId,
+        SellMode sellMode,
         uint256 startPrice,
         uint256 buyNowPrice,
         uint256 startTime,
         uint256 duration,
-        bool dutchAuction,
         uint256 discountInterval,
-        uint256 discountAmount,
-        string uri
+        uint256 discountAmount
     );
 
     event ListingRemoved(bytes32 indexed listingId, address indexed sender);
@@ -36,8 +41,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     event BuyNow(bytes32 indexed listingId, address indexed buyer, uint256 price);
 
     event ClaimNFT(bytes32 indexed listingId, bytes32 indexed biddingId, address indexed buyer);
-
-    event ClaimToken(address indexed addr, uint256 amount);
 
     event NftDeposit(address indexed sender, address indexed hostContract, uint256 tokenId);
 
@@ -63,19 +66,17 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     // https://eips.ethereum.org/EIPS/eip-721
     bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
 
-    // https://eips.ethereum.org/EIPS/eip-1155
-    bytes4 private constant _INTERFACE_ID_ERC1155 = 0xd9b67a26;
-
     struct listing {
         bytes32 id; // The listing id
         address seller; // The owner of the NFT who want to sell it
         address hostContract; // The source of the contract
         uint256 tokenId; // The NFT token ID
+        SellMode sellMode; // The sell mode the NFT, fixed price, auction or dutch auction
         uint256 startPrice; // The auction start price
         uint256 buyNowPrice; // The price user can directly buy the NFT
         uint256 startTime; // The timestamp of the listing creation
         uint256 auctionDuration; // The duration of the biddings, in seconds
-        bool dutchAuction; // Is this auction a dutch auction
+        //bool dutchAuction; // Is this auction a dutch auction
         uint256 discountInterval; // The discount interval, in seconds
         uint256 discountAmount; // The discount amount after every discount interval
         bytes32[] biddingIds; // The array of the bidding Ids
@@ -238,11 +239,11 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     function addListing(
         address _hostContract,
         uint256 _tokenId,
+        SellMode _sellMode,
         uint256 _startPrice,
         uint256 _buyNowPrice,
         uint256 _startTime,
         uint256 _duration,
-        bool _dutchAuction,
         uint256 _discountInterval,
         uint256 _discountAmount
     ) external nonReentrant {
@@ -251,13 +252,15 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
             "The NFT hosting contract is not in whitelist"
         );
         require(_startTime >= block.timestamp, "Listing auction start time past already");
+        require(_duration > 0, "Invalid duration");
 
-        if (_dutchAuction) {
+        if (_sellMode == SellMode.FixedPrice) {
+            require(_buyNowPrice > 0, "Invalid fixed price");
+        } else if (_sellMode == SellMode.Auction) {
+            require(_startPrice > 0, "Invalid auction start price");
+        } else if (_sellMode == SellMode.DutchAuction) {
             uint256 discount = (_discountAmount * _duration) / _discountInterval;
-            require(
-                _startPrice > discount,
-                "Dutch auction start price lower than the total discount"
-            );
+            require(_startPrice > discount, "Start price lower than total discount");
         }
 
         _depositNft(msg.sender, _hostContract, _tokenId);
@@ -268,32 +271,29 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         listingRegistry[listingId].seller = msg.sender;
         listingRegistry[listingId].hostContract = _hostContract;
         listingRegistry[listingId].tokenId = _tokenId;
+        listingRegistry[listingId].sellMode = _sellMode;
         listingRegistry[listingId].startPrice = _startPrice;
         listingRegistry[listingId].buyNowPrice = _buyNowPrice;
         listingRegistry[listingId].startTime = _startTime;
         listingRegistry[listingId].auctionDuration = _duration;
-        listingRegistry[listingId].dutchAuction = _dutchAuction;
         listingRegistry[listingId].discountInterval = _discountInterval;
         listingRegistry[listingId].discountAmount = _discountAmount;
         operationNonce++;
 
         addrListingIds[msg.sender].push(listingId);
 
-        ERC721 hostContract = ERC721(_hostContract);
-        string memory uri = hostContract.tokenURI(_tokenId);
         emit ListingPlaced(
             listingId,
             msg.sender,
             _hostContract,
             _tokenId,
+            _sellMode,
             _startPrice,
             _buyNowPrice,
             _startTime,
             _duration,
-            _dutchAuction,
             _discountInterval,
-            _discountAmount,
-            uri
+            _discountAmount
         );
     }
 
@@ -310,7 +310,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         listing storage lst = listingRegistry[listingId];
         require(lst.startTime > 0, "The listing doesn't exist");
 
-        if (lst.dutchAuction) {
+        if (lst.sellMode == SellMode.DutchAuction) {
             uint256 timeElapsed = block.timestamp - lst.startTime;
             uint256 discount = lst.discountAmount * (timeElapsed / lst.discountInterval);
             return lst.startPrice - discount;
@@ -325,12 +325,12 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
      */
     function placeBid(bytes32 listingId, uint256 price) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
+        require(lst.sellMode == SellMode.Auction, "Can only bid for listing on auction");
         require(block.timestamp >= lst.startTime, "The auction haven't start");
         require(
             lst.startTime + lst.auctionDuration >= block.timestamp,
             "The auction already expired"
         );
-        require(!lst.dutchAuction, "Cannot place bid for dutch auction");
 
         uint256 minPrice = lst.startPrice;
         // The last element is the current highest price
@@ -361,16 +361,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         emit BiddingPlaced(biddingId, listingId, price);
     }
 
-    function biddingOfListing(bytes32 listingId) public view returns (bidding[] memory) {
-        listing storage lst = listingRegistry[listingId];
-        bidding[] memory bids = new bidding[](lst.biddingIds.length);
-        for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
-            bytes32 biddingId = lst.biddingIds[i];
-            bids[i] = biddingRegistry[biddingId];
-        }
-        return bids;
-    }
-
     function biddingOfAddr(address addr) public view returns (bidding[] memory) {
         bidding[] memory biddings = new bidding[](addrBiddingIds[addr].length);
         for (uint256 i = 0; i < addrBiddingIds[addr].length; ++i) {
@@ -386,6 +376,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
      */
     function buyNow(bytes32 listingId) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
+        require(lst.sellMode != SellMode.Auction, "Auction not support buy now");
         require(block.timestamp >= lst.startTime, "The auction haven't start");
         require(
             lst.startTime + lst.auctionDuration >= block.timestamp,
@@ -412,16 +403,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         }
 
         emit BuyNow(listingId, msg.sender, price);
-
-        // Refund the failed bidder
-        for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
-            bytes32 tmpId = lst.biddingIds[i];
-            _transferToken(
-                biddingRegistry[tmpId].bidder,
-                biddingRegistry[tmpId].bidder,
-                biddingRegistry[tmpId].price
-            );
-        }
 
         _removeListing(listingId, lst.seller);
     }
