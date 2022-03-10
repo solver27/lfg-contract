@@ -404,16 +404,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
 
         emit BuyNow(listingId, msg.sender, price);
 
-        // Refund the failed bidder
-        for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
-            bytes32 tmpId = lst.biddingIds[i];
-            _transferToken(
-                biddingRegistry[tmpId].bidder,
-                biddingRegistry[tmpId].bidder,
-                biddingRegistry[tmpId].price
-            );
-        }
-
         _removeListing(listingId, lst.seller);
     }
 
