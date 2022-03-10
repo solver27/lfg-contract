@@ -361,9 +361,6 @@ describe("SAMContract", function () {
 
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-
-    balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
-    console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.equal(balanceOfAccount2.toString(), "59800000"); // 43800000 + 1600000
 
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
