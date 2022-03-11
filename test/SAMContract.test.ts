@@ -84,6 +84,10 @@ describe("SAMContract", function () {
       SAMContract.placeBid(listingId, "10000000", { from: accounts[1] })
     ).to.be.revertedWith("Can only bid for listing on auction");
 
+    await expect(
+      SAMContract.buyNow(listingId, { from: accounts[2] })
+    ).to.be.revertedWith("Buyer cannot be seller");
+
     await SAMContract.buyNow(listingId, { from: accounts[1] });
 
     let account1TokenIds = await LFGNFT.tokensOfOwner(accounts[1]);
@@ -142,6 +146,10 @@ describe("SAMContract", function () {
     await expect(
       SAMContract.placeBid(listingId, "10000000", { from: accounts[3] })
     ).to.be.revertedWith("Bid price too low");
+
+    await expect(
+      SAMContract.placeBid(listingId, "11000000", { from: accounts[2] })
+    ).to.be.revertedWith("Bidder cannot be seller");
 
     await SAMContract.placeBid(listingId, "11000000", { from: accounts[3] });
 

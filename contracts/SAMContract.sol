@@ -331,6 +331,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
             lst.startTime + lst.auctionDuration >= block.timestamp,
             "The auction already expired"
         );
+        require(msg.sender != lst.seller, "Bidder cannot be seller");
 
         uint256 minPrice = lst.startPrice;
         // The last element is the current highest price
@@ -382,6 +383,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
             lst.startTime + lst.auctionDuration >= block.timestamp,
             "The auction already expired"
         );
+        require(msg.sender != lst.seller, "Buyer cannot be seller");
 
         uint256 price = getPrice(listingId);
 
