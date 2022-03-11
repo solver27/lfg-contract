@@ -4,6 +4,7 @@ const { web3 } = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
+const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
 const SAMContractArt = hre.artifacts.require("SAMContract");
 const BurnTokenArt = hre.artifacts.require("BurnToken");
 const BN = require("bn.js");
@@ -13,6 +14,7 @@ describe("SAMContract", function () {
   let LFGToken = null;
   let LFGNFT = null;
   let LFGFireNFT = null;
+  let NftWhiteList = null;
   let SAMContract = null;
   let BurnToken = null;
   let accounts = ["", "", "", "", "", "", ""],
@@ -31,11 +33,13 @@ describe("SAMContract", function () {
 
       LFGFireNFT = await LFGFireNFTArt.new();
 
-      SAMContract = await SAMContractArt.new(minter, LFGToken.address, burnAddress, revenueAddress);
+      NftWhiteList = await NftWhiteListArt.new(minter);
+
+      SAMContract = await SAMContractArt.new(minter, LFGToken.address, NftWhiteList.address, burnAddress, revenueAddress);
 
       // This one must call from owner
-      await SAMContract.setNftContractWhitelist(LFGNFT.address, true, { from: minter });
-      await SAMContract.setNftContractWhitelist(LFGFireNFT.address, true, { from: minter });
+      await NftWhiteList.setNftContractWhitelist(LFGNFT.address, true, { from: minter });
+      await NftWhiteList.setNftContractWhitelist(LFGFireNFT.address, true, { from: minter });
 
       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
       await SAMContract.updateFeeRate(250, 5000, 1000, { from: minter });

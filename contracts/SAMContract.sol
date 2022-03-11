@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/IERC2981.sol";
 import "./interfaces/IBurnToken.sol";
+import "./interfaces/INftWhiteList.sol";
 
 contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     enum SellMode {
@@ -58,13 +59,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 royaltiesFeeAmount
     );
 
-    event SetNftContractWhitelist(address indexed nftContract, bool isWhitelist);
-
     // https://eips.ethereum.org/EIPS/eip-2981
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
-
-    // https://eips.ethereum.org/EIPS/eip-721
-    bytes4 private constant _INTERFACE_ID_ERC721 = 0x80ac58cd;
 
     struct listing {
         bytes32 id; // The listing id
@@ -89,9 +85,6 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 price; // The bidder price
         uint256 timestamp; // The timestamp user create the bidding
     }
-
-    // The NFT contract whitelists, only NFT contract whitelisted can sell in the marketplace
-    mapping(address => bool) public nftContractWhiteLists;
 
     mapping(bytes32 => listing) public listingRegistry; // The mapping of listing Id to listing details
 
@@ -132,10 +125,11 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     // The Fire NFT contract address
     address public fireNftContractAddress;
 
-    //uint256 public burnOnFireNftRate;
-
     //address public burnFromAddress;
     IBurnToken public burnTokenContract;
+
+    // The nft whitelist contract
+    INftWhiteList public nftWhiteListContract;
 
     IERC20 public lfgToken;
 
@@ -158,12 +152,14 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
     constructor(
         address _owner,
         IERC20 _lfgToken,
+        INftWhiteList _nftWhiteList,
         address _burnAddress,
         address _revenueAddress
     ) {
         require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
         lfgToken = _lfgToken;
+        nftWhiteListContract = _nftWhiteList;
         burnAddress = _burnAddress;
         revenueAddress = _revenueAddress;
 
@@ -248,7 +244,7 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 _discountAmount
     ) external nonReentrant {
         require(
-            nftContractWhiteLists[_hostContract],
+            nftWhiteListContract.isWhiteListed(_hostContract),
             "The NFT hosting contract is not in whitelist"
         );
         require(_startTime >= block.timestamp, "Listing auction start time past already");
@@ -576,28 +572,23 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         revenueAddress = _revenueAddress;
     }
 
-    function setNftContractWhitelist(address _addr, bool _isWhitelist) external onlyOwner {
-        require(_addr != address(0), "Invalid NFT contract address");
-        require(
-            IERC165(_addr).supportsInterface(_INTERFACE_ID_ERC721),
-            "Invalid NFT token contract address"
-        );
-
-        nftContractWhiteLists[_addr] = _isWhitelist;
-
-        emit SetNftContractWhitelist(_addr, _isWhitelist);
-    }
-
-    function setFireNftContractInfo(address _address, IBurnToken _burnTokenAddr)
+    function setFireNftContractInfo(address _address, IBurnToken _burnTokenContract)
         external
         onlyOwner
     {
         require(_address != address(0), "Invalid address");
         fireNftContractAddress = _address;
-        burnTokenContract = _burnTokenAddr;
+        burnTokenContract = _burnTokenContract;
     }
 
     function _burnTokenOnFireNft(uint256 price) internal {
         burnTokenContract.burn(price);
+    }
+
+    function setNftWhiteListContract(INftWhiteList _whitelistContract)
+        external
+        onlyOwner
+    {
+        nftWhiteListContract = _whitelistContract;
     }
 }
