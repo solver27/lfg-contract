@@ -13,7 +13,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/IERC2981.sol";
 import "./interfaces/INftWhiteList.sol";
 
-contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
+/// The contract is abstract so it cannnot be deployed.
+abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     enum SellMode {
         FixedPrice,
         Auction,
@@ -98,8 +99,6 @@ contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     uint256 public constant MAXIMUM_FEE_RATE = 5000;
     uint256 public constant FEE_RATE_BASE = 10000;
     uint256 public feeRate;
-
-    uint256 public constant MAXIMUM_FEE_BURN_RATE = 10000; // maximum burn 100% of the fee
 
     // maximum charge 50% royalty fee
     uint256 public constant MAXIMUM_ROYALTIES_FEE_RATE = 5000;
@@ -302,5 +301,22 @@ contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         onlyOwner
     {
         nftWhiteListContract = _whitelistContract;
+    }
+
+    /*
+     * @notice Update the fee rate and burn fee rate from the burn amount
+     * @dev Only callable by owner.
+     * @param _fee: the fee rate
+     * @param _burnRate: the burn fee rate
+     */
+    function updateFeeRate(
+        uint256 _feeRate,
+        uint256 _royaltiesFeeRate
+    ) external onlyOwner {
+        require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
+        require(_royaltiesFeeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
+
+        feeRate = _feeRate;
+        royaltiesFeeRate = _royaltiesFeeRate;
     }
 }

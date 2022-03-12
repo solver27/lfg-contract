@@ -66,23 +66,6 @@ contract SAMContractGas is SAMContractBase {
     }
 
     /*
-     * @notice Update the fee rate and burn fee rate from the burn amount
-     * @dev Only callable by owner.
-     * @param _fee: the fee rate
-     * @param _burnRate: the burn fee rate
-     */
-    function updateFeeRate(
-        uint256 _feeRate,
-        uint256 _royaltiesFeeRate
-    ) external onlyOwner {
-        require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
-        require(_royaltiesFeeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
-
-        feeRate = _feeRate;
-        royaltiesFeeRate = _royaltiesFeeRate;
-    }
-
-    /*
      * @notice Place bidding for the listing item, only support normal auction.
      * @dev The bidding price must higher than previous price.
      */
