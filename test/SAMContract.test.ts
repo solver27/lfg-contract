@@ -74,7 +74,7 @@ describe("SAMContract", function () {
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
-    let listingId = listingResult[0][0];
+    let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
     await LFGToken.transfer(accounts[1], testDepositAmount);
@@ -139,7 +139,7 @@ describe("SAMContract", function () {
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
 
-    let listingId = listingResult[0][0];
+    let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
     for (let accountId = 3; accountId < 6; ++accountId) {
@@ -168,7 +168,7 @@ describe("SAMContract", function () {
     console.log("Biddings of address: ", JSON.stringify(biddings));
 
     await expect(
-      SAMContract.claimNft(biddings[0][0], { from: accounts[3] })
+      SAMContract.claimNft(biddings[0], { from: accounts[3] })
     ).to.be.revertedWith("The bidding period haven't complete");
 
     const today = Math.round(new Date() / 1000);
@@ -176,12 +176,12 @@ describe("SAMContract", function () {
     await hre.network.provider.send("evm_mine");
 
     await expect(
-      SAMContract.claimNft(biddings[0][0], { from: accounts[3] })
+      SAMContract.claimNft(biddings[0], { from: accounts[3] })
     ).to.be.revertedWith("The bidding is not the highest price");
 
     const biddingsOfAddr5 = await SAMContract.biddingOfAddr(accounts[5]);
 
-    await SAMContract.claimNft(biddingsOfAddr5[0][0], { from: accounts[5] });
+    await SAMContract.claimNft(biddingsOfAddr5[0], { from: accounts[5] });
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
 
@@ -226,7 +226,7 @@ describe("SAMContract", function () {
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
-    let listingId = listingResult[0][0];
+    let listingId = listingResult[0];
 
     await expect(
       SAMContract.removeListing(listingId, { from: accounts[2] })
@@ -259,7 +259,7 @@ describe("SAMContract", function () {
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
-    let listingId = listingResult[0][0];
+    let listingId = listingResult[0];
 
     await expect(
       SAMContract.removeListing(listingId, { from: accounts[2] })
@@ -335,7 +335,7 @@ describe("SAMContract", function () {
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
-    let listingId = listingResult[0][0];
+    let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
     await LFGToken.transfer(accounts[1], testDepositAmount);
@@ -410,7 +410,7 @@ describe("SAMContract", function () {
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
-    let listingId = listingResult[0][0];
+    let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
     await LFGToken.transfer(accounts[1], testDepositAmount);

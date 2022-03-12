@@ -293,13 +293,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         );
     }
 
-    function listingOfAddr(address addr) public view returns (listing[] memory) {
-        listing[] memory resultlistings = new listing[](addrListingIds[addr].length);
-        for (uint256 i = 0; i < addrListingIds[addr].length; ++i) {
-            bytes32 listingId = addrListingIds[addr][i];
-            resultlistings[i] = listingRegistry[listingId];
-        }
-        return resultlistings;
+    function listingOfAddr(address addr) public view returns (bytes32[] memory) {
+        return addrListingIds[addr];
     }
 
     function getPrice(bytes32 listingId) public view returns (uint256) {
@@ -358,13 +353,8 @@ contract SAMContract is Ownable, ReentrancyGuard, IERC721Receiver {
         emit BiddingPlaced(biddingId, listingId, price);
     }
 
-    function biddingOfAddr(address addr) public view returns (bidding[] memory) {
-        bidding[] memory biddings = new bidding[](addrBiddingIds[addr].length);
-        for (uint256 i = 0; i < addrBiddingIds[addr].length; ++i) {
-            bytes32 biddingId = addrBiddingIds[addr][i];
-            biddings[i] = biddingRegistry[biddingId];
-        }
-        return biddings;
+    function biddingOfAddr(address addr) public view returns (bytes32[] memory) {
+        return addrBiddingIds[addr];
     }
 
     /*
