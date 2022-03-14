@@ -70,7 +70,7 @@ contract SAMContractGas is SAMContractBase {
         require(lst.sellMode == SellMode.Auction, "Can only bid for listing on auction");
         require(block.timestamp >= lst.startTime, "The auction haven't start");
         require(
-            lst.startTime + lst.auctionDuration >= block.timestamp,
+            lst.startTime + lst.duration >= block.timestamp,
             "The auction already expired"
         );
         require(msg.sender != lst.seller, "Bidder cannot be seller");
@@ -143,7 +143,7 @@ contract SAMContractGas is SAMContractBase {
         require(lst.sellMode != SellMode.Auction, "Auction not support buy now");
         require(block.timestamp >= lst.startTime, "The auction haven't start");
         require(
-            lst.startTime + lst.auctionDuration >= block.timestamp,
+            lst.startTime + lst.duration >= block.timestamp,
             "The auction already expired"
         );
         require(msg.sender != lst.seller, "Buyer cannot be seller");
@@ -180,7 +180,7 @@ contract SAMContractGas is SAMContractBase {
 
         listing storage lst = listingRegistry[bid.listingId];
         require(
-            lst.startTime + lst.auctionDuration < block.timestamp,
+            lst.startTime + lst.duration < block.timestamp,
             "The bidding period haven't complete"
         );
 

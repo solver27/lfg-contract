@@ -71,7 +71,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 startPrice; // The auction start price
         uint256 buyNowPrice; // The price user can directly buy the NFT
         uint256 startTime; // The timestamp of the listing creation
-        uint256 auctionDuration; // The duration of the biddings, in seconds
+        uint256 duration; // The duration of the biddings, in seconds
         //bool dutchAuction; // Is this auction a dutch auction
         uint256 discountInterval; // The discount interval, in seconds
         uint256 discountAmount; // The discount amount after every discount interval
@@ -157,6 +157,8 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         } else if (_sellMode == SellMode.Auction) {
             require(_startPrice > 0, "Invalid auction start price");
         } else if (_sellMode == SellMode.DutchAuction) {
+            require(_discountInterval > 0, "Invalid discount interval");
+            require(_discountAmount > 0, "Invalid discount amount");
             uint256 discount = (_discountAmount * _duration) / _discountInterval;
             require(_startPrice > discount, "Start price lower than total discount");
         }
@@ -173,7 +175,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         listingRegistry[listingId].startPrice = _startPrice;
         listingRegistry[listingId].buyNowPrice = _buyNowPrice;
         listingRegistry[listingId].startTime = _startTime;
-        listingRegistry[listingId].auctionDuration = _duration;
+        listingRegistry[listingId].duration = _duration;
         listingRegistry[listingId].discountInterval = _discountInterval;
         listingRegistry[listingId].discountAmount = _discountAmount;
         operationNonce++;
@@ -204,7 +206,18 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         require(lst.startTime > 0, "The listing doesn't exist");
 
         if (lst.sellMode == SellMode.DutchAuction) {
-            uint256 timeElapsed = block.timestamp - lst.startTime;
+            uint256 timeElapsed;
+            // If the auction haven't start, then already return the start price
+            if (lst.startTime >= block.timestamp) {
+                return lst.startPrice;
+            }
+
+            timeElapsed = block.timestamp - lst.startTime;
+            // If the time elapsed exceed duration, then using the duration, because after duration the
+            // price shouldn't drop.
+            if (timeElapsed > lst.duration) {
+                timeElapsed = lst.duration;
+            }
             uint256 discount = lst.discountAmount * (timeElapsed / lst.discountInterval);
             return lst.startPrice - discount;
         }
@@ -236,7 +249,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     function removeListing(bytes32 listingId) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
         require(
-            lst.startTime + lst.auctionDuration < block.timestamp,
+            lst.startTime + lst.duration < block.timestamp,
             "The listing haven't expired"
         );
         require(lst.seller == msg.sender, "Only seller can remove");
