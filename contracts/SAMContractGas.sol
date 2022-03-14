@@ -9,7 +9,6 @@ import "./interfaces/IERC2981.sol";
 import "./SAMContractBase.sol";
 
 contract SAMContractGas is SAMContractBase {
-
     event ClaimBalance(address indexed addr, uint256 amount);
 
     // Total revenue amount
@@ -22,10 +21,7 @@ contract SAMContractGas is SAMContractBase {
 
     mapping(address => userToken) public addrTokens;
 
-    constructor(
-        address _owner,
-        INftWhiteList _nftWhiteList
-    ) {
+    constructor(address _owner, INftWhiteList _nftWhiteList) {
         require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
         nftWhiteListContract = _nftWhiteList;
@@ -107,6 +103,35 @@ contract SAMContractGas is SAMContractBase {
         addrBiddingIds[msg.sender].push(biddingId);
 
         emit BiddingPlaced(biddingId, listingId, msg.value);
+    }
+
+    /*
+     * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
+     * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
+     */
+    function addListing(
+        address _hostContract,
+        uint256 _tokenId,
+        SellMode _sellMode,
+        uint256 _startPrice,
+        uint256 _buyNowPrice,
+        uint256 _startTime,
+        uint256 _duration,
+        uint256 _discountInterval,
+        uint256 _discountAmount
+    ) external nonReentrant {
+        require(_hostContract != fireNftContractAddress, "FireNFT can only sell for LFG");
+        _addListing(
+            _hostContract,
+            _tokenId,
+            _sellMode,
+            _startPrice,
+            _buyNowPrice,
+            _startTime,
+            _duration,
+            _discountInterval,
+            _discountAmount
+        );
     }
 
     /*

@@ -143,6 +143,34 @@ contract SAMContract is SAMContractBase {
     }
 
     /*
+     * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
+     * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
+     */
+    function addListing(
+        address _hostContract,
+        uint256 _tokenId,
+        SellMode _sellMode,
+        uint256 _startPrice,
+        uint256 _buyNowPrice,
+        uint256 _startTime,
+        uint256 _duration,
+        uint256 _discountInterval,
+        uint256 _discountAmount
+    ) external nonReentrant {
+        _addListing(
+            _hostContract,
+            _tokenId,
+            _sellMode,
+            _startPrice,
+            _buyNowPrice,
+            _startTime,
+            _duration,
+            _discountInterval,
+            _discountAmount
+        );
+    }
+
+    /*
      * @notice Immediately buy the NFT.
      * @dev If it is dutch auction, then the price is dutch auction price, if normal auction, then the price is buyNowPrice.
      */

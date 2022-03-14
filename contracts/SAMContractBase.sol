@@ -134,7 +134,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
      * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
      * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
      */
-    function addListing(
+    function _addListing(
         address _hostContract,
         uint256 _tokenId,
         SellMode _sellMode,
@@ -144,7 +144,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 _duration,
         uint256 _discountInterval,
         uint256 _discountAmount
-    ) external nonReentrant {
+    ) internal {
         require(
             nftWhiteListContract.isWhiteListed(_hostContract),
             "The NFT hosting contract is not in whitelist"

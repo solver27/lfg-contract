@@ -362,7 +362,7 @@ describe("SAMContractGas", function () {
 
     await expect(
       SAMContractGas.revenueSweep()).to.be.revertedWith("Ownable: caller is not the owner");
-    await SAMContractGas.revenueSweep({from: minter});
+    await SAMContractGas.revenueSweep({ from: minter });
 
     revenueAmount = await SAMContractGas.revenueAmount();
     assert.equal(revenueAmount.toString(), "0");
@@ -371,5 +371,28 @@ describe("SAMContractGas", function () {
     console.log("Owner balance after revenue sweep ", ownerBalance.toString());
     assert.isAbove(parseInt(ownerBalance.toString()), 10000201265059650000000);
 
+  });
+
+  it("Test fire NFT cannot sell for gas", async function () {
+    // Top up burn contract
+    await SAMContractGas.setFireNftContract(LFGFireNFT.address, { from: minter });
+
+    let supply = await LFGFireNFT.totalSupply();
+    console.log("supply ", supply.toString());
+
+    await LFGFireNFT.adminMint(2, accounts[2], { from: accounts[0] });
+
+    supply = await LFGFireNFT.totalSupply();
+    console.log("supply ", supply.toString());
+    let account2TokenIds = await LFGFireNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
+
+    await LFGFireNFT.approve(SAMContractGas.address, 1, { from: accounts[2] });
+
+    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    console.log("latestBlock ", latestBlock);
+
+    await expect(SAMContractGas.addListing(LFGFireNFT.address, account2TokenIds[0], 0, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+      0, 0, { from: accounts[2] })).to.be.revertedWith("FireNFT can only sell for LFG");
   });
 });
