@@ -42,7 +42,8 @@ describe("SAMContract", function () {
       await NftWhiteList.setNftContractWhitelist(LFGFireNFT.address, true, { from: minter });
 
       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
-      await SAMContract.updateFeeRate(250, 5000, 1000, { from: minter });
+      await SAMContract.updateFeeRate(250, 1000, { from: minter });
+      await SAMContract.updateBurnFeeRate(5000, { from: minter });
 
       BurnToken = await BurnTokenArt.new(minter, LFGToken.address, burnAddress1);
       await BurnToken.setOperator(SAMContract.address, true, { from: minter });
@@ -361,9 +362,6 @@ describe("SAMContract", function () {
 
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-
-    balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
-    console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.equal(balanceOfAccount2.toString(), "59800000"); // 43800000 + 1600000
 
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
@@ -387,7 +385,8 @@ describe("SAMContract", function () {
     // Top up burn contract
     await LFGToken.transfer(BurnToken.address, "100000000000000000000000");
     await BurnToken.setBurnRate(1000, { from: minter });
-    await SAMContract.setFireNftContractInfo(LFGFireNFT.address, BurnToken.address, { from: minter });
+    await SAMContract.setFireNftContract(LFGFireNFT.address, { from: minter });
+    await SAMContract.setBurnTokenContract(BurnToken.address, { from: minter });
 
     let supply = await LFGFireNFT.totalSupply();
     console.log("supply ", supply.toString());

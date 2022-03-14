@@ -5,54 +5,28 @@
 
 pragma solidity ^0.8.0;
 
-import "./interfaces/IBurnToken.sol";
 import "./interfaces/IERC2981.sol";
 import "./SAMContractBase.sol";
 
-contract SAMContract is SAMContractBase {
-    uint256 public constant MAXIMUM_FEE_BURN_RATE = 10000; // maximum burn 100% of the fee
-
-    // The rate of fee to burn
-    uint256 public feeBurnRate;
-
-    // The address to burn token
-    address public burnAddress;
-
-    uint256 public totalBurnAmount;
-
-    // The revenue address
-    address public revenueAddress;
+contract SAMContractGas is SAMContractBase {
+    event ClaimBalance(address indexed addr, uint256 amount);
 
     // Total revenue amount
     uint256 public revenueAmount;
 
-    //address public burnFromAddress;
-    IBurnToken public burnTokenContract;
-
-    IERC20 public lfgToken;
-
     struct userToken {
+        uint256 claimableAmount;
         uint256 lockedAmount;
     }
 
     mapping(address => userToken) public addrTokens;
 
-    constructor(
-        address _owner,
-        IERC20 _lfgToken,
-        INftWhiteList _nftWhiteList,
-        address _burnAddress,
-        address _revenueAddress
-    ) {
+    constructor(address _owner, INftWhiteList _nftWhiteList) {
         require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
-        lfgToken = _lfgToken;
         nftWhiteListContract = _nftWhiteList;
-        burnAddress = _burnAddress;
-        revenueAddress = _revenueAddress;
 
         feeRate = 250; // 2.5%
-        feeBurnRate = 5000; // 50%
         royaltiesFeeRate = 1000; // Default 10% royalties fee.
     }
 
@@ -72,14 +46,13 @@ contract SAMContract is SAMContractBase {
         if (royaltiesAmount > 0) {
             uint256 royaltyFee = (royaltiesAmount * royaltiesFeeRate) / FEE_RATE_BASE;
             if (royaltyFee > 0) {
-                _transferToken(msg.sender, revenueAddress, royaltyFee);
                 revenueAmount += royaltyFee;
 
                 emit RoyaltiesFeePaid(_contract, tokenId, royaltyFee);
             }
 
             uint256 payToReceiver = royaltiesAmount - royaltyFee;
-            _transferToken(msg.sender, royaltiesReceiver, payToReceiver);
+            addrTokens[royaltiesReceiver].claimableAmount = payToReceiver;
 
             // Broadcast royalties payment
             emit RoyaltiesPaid(_contract, tokenId, payToReceiver);
@@ -89,21 +62,10 @@ contract SAMContract is SAMContractBase {
     }
 
     /*
-     * @notice Update the burn fee rate from the burn amount
-     * @dev Only callable by owner.
-     * @param _fee: the fee rate
-     * @param _burnRate: the burn fee rate
-     */
-    function updateBurnFeeRate(uint256 _feeBurnRate) external onlyOwner {
-        require(_feeBurnRate <= FEE_RATE_BASE, "Invalid fee burn rate");
-        feeBurnRate = _feeBurnRate;
-    }
-
-    /*
      * @notice Place bidding for the listing item, only support normal auction.
      * @dev The bidding price must higher than previous price.
      */
-    function placeBid(bytes32 listingId, uint256 price) external nonReentrant {
+    function placeBid(bytes32 listingId) external payable nonReentrant {
         listing storage lst = listingRegistry[listingId];
         require(lst.sellMode == SellMode.Auction, "Can only bid for listing on auction");
         require(block.timestamp >= lst.startTime, "The auction haven't start");
@@ -120,9 +82,10 @@ contract SAMContract is SAMContractBase {
             minPrice = biddingRegistry[lastBiddingId].price;
         }
 
-        require(price > minPrice, "Bid price too low");
+        require(msg.value > minPrice, "Bid price too low");
 
-        _depositToken(msg.sender, price);
+        addrTokens[msg.sender].lockedAmount += msg.value;
+        totalEscrowAmount += msg.value;
 
         bytes32 biddingId = keccak256(
             abi.encodePacked(operationNonce, lst.hostContract, lst.tokenId)
@@ -130,7 +93,7 @@ contract SAMContract is SAMContractBase {
         biddingRegistry[biddingId].id = biddingId;
         biddingRegistry[biddingId].bidder = msg.sender;
         biddingRegistry[biddingId].listingId = listingId;
-        biddingRegistry[biddingId].price = price;
+        biddingRegistry[biddingId].price = msg.value;
         biddingRegistry[biddingId].timestamp = block.timestamp;
 
         operationNonce++;
@@ -139,7 +102,7 @@ contract SAMContract is SAMContractBase {
 
         addrBiddingIds[msg.sender].push(biddingId);
 
-        emit BiddingPlaced(biddingId, listingId, price);
+        emit BiddingPlaced(biddingId, listingId, msg.value);
     }
 
     /*
@@ -157,6 +120,7 @@ contract SAMContract is SAMContractBase {
         uint256 _discountInterval,
         uint256 _discountAmount
     ) external nonReentrant {
+        require(_hostContract != fireNftContractAddress, "FireNFT can only sell for LFG");
         _addListing(
             _hostContract,
             _tokenId,
@@ -174,7 +138,7 @@ contract SAMContract is SAMContractBase {
      * @notice Immediately buy the NFT.
      * @dev If it is dutch auction, then the price is dutch auction price, if normal auction, then the price is buyNowPrice.
      */
-    function buyNow(bytes32 listingId) external nonReentrant {
+    function buyNow(bytes32 listingId) external payable nonReentrant {
         listing storage lst = listingRegistry[listingId];
         require(lst.sellMode != SellMode.Auction, "Auction not support buy now");
         require(block.timestamp >= lst.startTime, "The auction haven't start");
@@ -186,22 +150,20 @@ contract SAMContract is SAMContractBase {
 
         uint256 price = getPrice(listingId);
 
-        _processFee(msg.sender, price);
+        // For BNB, the value need to larger then the price + fee
+        uint256 fee = (price * feeRate) / FEE_RATE_BASE;
+        require(msg.value >= price + fee, "Not enough funds to buy");
 
-        // Deposit the tokens to market place contract.
-        _depositToken(msg.sender, price);
+        totalEscrowAmount += price;
 
         uint256 sellerAmount = price;
         if (_checkRoyalties(lst.hostContract)) {
             sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, price);
         }
 
-        _transferToken(msg.sender, lst.seller, sellerAmount);
+        addrTokens[lst.seller].claimableAmount += sellerAmount;
+        revenueAmount += msg.value - price;
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
-
-        if (lst.hostContract == fireNftContractAddress) {
-            _burnTokenOnFireNft(price);
-        }
 
         emit BuyNow(listingId, msg.sender, price);
 
@@ -209,10 +171,10 @@ contract SAMContract is SAMContractBase {
     }
 
     /*
-     * @notice The highest bidder claim the NFT he bought.
+     * @notice The highest bidder claim the NFT he bought. The bidder need to pay 2.5% of bidding price for the fee.
      * @dev Can only claim after the auction period finished.
      */
-    function claimNft(bytes32 biddingId) external nonReentrant {
+    function claimNft(bytes32 biddingId) external payable nonReentrant {
         bidding storage bid = biddingRegistry[biddingId];
         require(bid.bidder == msg.sender, "Only bidder can claim NFT");
 
@@ -221,6 +183,7 @@ contract SAMContract is SAMContractBase {
             lst.startTime + lst.duration < block.timestamp,
             "The bidding period haven't complete"
         );
+
         for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
             bytes32 tmpId = lst.biddingIds[i];
             if (biddingRegistry[tmpId].price > bid.price) {
@@ -228,7 +191,10 @@ contract SAMContract is SAMContractBase {
             }
         }
 
-        _processFee(msg.sender, bid.price);
+        uint256 fee = (bid.price * feeRate) / FEE_RATE_BASE;
+        require(msg.value >= fee, "Not enough gas to pay the fee");
+        revenueAmount += msg.value;
+
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         uint256 sellerAmount = bid.price;
@@ -236,11 +202,8 @@ contract SAMContract is SAMContractBase {
             sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, bid.price);
         }
 
-        _transferToken(msg.sender, lst.seller, sellerAmount);
-
-        if (lst.hostContract == fireNftContractAddress) {
-            _burnTokenOnFireNft(bid.price);
-        }
+        addrTokens[msg.sender].lockedAmount -= bid.price;
+        addrTokens[lst.seller].claimableAmount += sellerAmount;
 
         emit ClaimNFT(lst.id, biddingId, msg.sender);
 
@@ -248,66 +211,36 @@ contract SAMContract is SAMContractBase {
         for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
             bytes32 tmpId = lst.biddingIds[i];
             if (tmpId != biddingId) {
-                _transferToken(
-                    biddingRegistry[tmpId].bidder,
-                    biddingRegistry[tmpId].bidder,
-                    biddingRegistry[tmpId].price
-                );
+                addrTokens[biddingRegistry[tmpId].bidder].lockedAmount -= biddingRegistry[tmpId]
+                    .price;
+                addrTokens[biddingRegistry[tmpId].bidder].claimableAmount += biddingRegistry[tmpId]
+                    .price;
             }
         }
 
         _removeListing(lst.id, lst.seller);
     }
 
-    function _processFee(address buyer, uint256 price) internal {
-        uint256 fee = (price * feeRate) / FEE_RATE_BASE;
-        uint256 feeToBurn = (fee * feeBurnRate) / FEE_RATE_BASE;
-        uint256 revenue = fee - feeToBurn;
-        lfgToken.transferFrom(buyer, revenueAddress, revenue);
-        lfgToken.transferFrom(buyer, burnAddress, feeToBurn);
-        totalBurnAmount += feeToBurn;
+    /*
+     * @notice The NFT seller or failed bidder can claim the token back.
+     * @dev All the available token under his account will be claimed.
+     */
+    function claimBalance() external nonReentrant {
+        require(addrTokens[msg.sender].claimableAmount > 0, "The claimableAmount is zero");
+        payable(msg.sender).transfer(addrTokens[msg.sender].claimableAmount);
 
-        revenueAmount += revenue;
-    }
+        emit ClaimBalance(msg.sender, addrTokens[msg.sender].claimableAmount);
 
-    function _depositToken(address addr, uint256 _amount) internal {
-        lfgToken.transferFrom(addr, address(this), _amount);
-        addrTokens[addr].lockedAmount += _amount;
-        totalEscrowAmount += _amount;
-    }
-
-    function _transferToken(
-        address from,
-        address to,
-        uint256 _amount
-    ) internal {
-        require(addrTokens[from].lockedAmount >= _amount, "The locked amount is not enough");
-        lfgToken.transfer(to, _amount);
-        addrTokens[from].lockedAmount -= _amount;
-        totalEscrowAmount -= _amount;
+        totalEscrowAmount -= addrTokens[msg.sender].claimableAmount;
+        addrTokens[msg.sender].claimableAmount = 0;
     }
 
     /*
-     * @notice Set the burn and revenue address, combine into one function to reduece contract size.
-     * @dev Only callable by owner.
-     * @param _burnAddress: the burn address
-     * @param _revenueAddress: the revenue address
+     * @notice Owner to withdraw revenue from the contract.
      */
-    function setBurnAndRevenueAddress(address _burnAddress, address _revenueAddress)
-        external
-        onlyOwner
-    {
-        require(_revenueAddress != address(0), "Invalid revenue address");
-
-        burnAddress = _burnAddress;
-        revenueAddress = _revenueAddress;
-    }
-
-    function setBurnTokenContract(IBurnToken _burnTokenContract) external onlyOwner {
-        burnTokenContract = _burnTokenContract;
-    }
-
-    function _burnTokenOnFireNft(uint256 price) internal {
-        burnTokenContract.burn(price);
+    function revenueSweep() external onlyOwner {
+        require(revenueAmount > 0, "No revenue to sweep");
+        payable(msg.sender).transfer(revenueAmount);
+        revenueAmount = 0;
     }
 }
