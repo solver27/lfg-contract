@@ -7,12 +7,12 @@ const { createImportSpecifier } = require("typescript");
 
 describe("LFGNFT1155", function () {
   let LFGNFT1155 = null;
-  let accounts = ["", "", ""],
+  let accounts = ["", "", "", ""],
     owner;
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], accounts[2], owner] = await web3.eth.getAccounts();
+      [accounts[0], accounts[1], accounts[2], accounts[3], owner] = await web3.eth.getAccounts();
       LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
     } catch (err) {
       console.log(err);
@@ -28,10 +28,25 @@ describe("LFGNFT1155", function () {
     //console.log(JSON.stringify(id));
     const nftBalance1 = await LFGNFT1155.balanceOf(accounts[1], id);
     console.log("nftBalance of account 1 ", nftBalance1.toString());
+    assert.equal(nftBalance1.toString(), "10");
 
     await LFGNFT1155.mint(accounts[2], id, 10, "0x0", { from: accounts[1] });
-    const nftBalance2 = await LFGNFT1155.balanceOf(accounts[2], id);
+    let nftBalance2 = await LFGNFT1155.balanceOf(accounts[2], id);
     console.log("nftBalance of account 2 ", nftBalance2.toString());
+    assert.equal(nftBalance2.toString(), "10");
+
+    const token1Supply = await LFGNFT1155.tokenSupply(id);
+    assert.equal(token1Supply.toString(), "20");
+
+    await LFGNFT1155.safeTransferFrom(accounts[2], accounts[3], id, 5, "0x0", {from: accounts[2]});
+
+    nftBalance2 = await LFGNFT1155.balanceOf(accounts[2], id);
+    console.log("nftBalance of account 2 ", nftBalance2.toString());
+    assert.equal(nftBalance2.toString(), "5");
+
+    let nftBalance3 = await LFGNFT1155.balanceOf(accounts[3], id);
+    console.log("nftBalance of account 3 ", nftBalance2.toString());
+    assert.equal(nftBalance3.toString(), "5");
 
   //   let account1TokenIds = await LFGNFT1155.tokensOfOwner(accounts[1]);
   //   console.log("tokenIds of account1 ", JSON.stringify(account1TokenIds));
