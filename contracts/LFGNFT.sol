@@ -35,7 +35,7 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     mapping(uint256 => RoyaltyInfo) private royalties;
 
     // MAX royalty percent
-    uint16 public constant MAX_ROYALTY = 5000;
+    uint16 public constant MAX_ROYALTY = 2000;
 
     event Minted(address indexed minter, uint256 qty, address indexed to);
 
