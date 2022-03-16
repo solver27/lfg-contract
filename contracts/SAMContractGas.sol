@@ -161,7 +161,7 @@ contract SAMContractGas is SAMContractBase {
 
         addrTokens[lst.seller].claimableAmount += sellerAmount;
         revenueAmount += msg.value - price;
-        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
+        _transferNft(listingId, msg.sender, lst.hostContract, lst.tokenId);
 
         emit BuyNow(listingId, msg.sender, price);
 
@@ -193,7 +193,7 @@ contract SAMContractGas is SAMContractBase {
         require(msg.value >= fee, "Not enough gas to pay the fee");
         revenueAmount += msg.value;
 
-        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
+        _transferNft(lst.id, msg.sender, lst.hostContract, lst.tokenId);
 
         uint256 sellerAmount = bid.price;
         if (_checkRoyalties(lst.hostContract)) {

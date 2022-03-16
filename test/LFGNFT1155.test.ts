@@ -38,7 +38,7 @@ describe("LFGNFT1155", function () {
     const token1Supply = await LFGNFT1155.tokenSupply(id);
     assert.equal(token1Supply.toString(), "20");
 
-    await LFGNFT1155.safeTransferFrom(accounts[2], accounts[3], id, 5, "0x0", {from: accounts[2]});
+    await LFGNFT1155.safeTransferFrom(accounts[2], accounts[3], id, 5, "0x0", { from: accounts[2] });
 
     nftBalance2 = await LFGNFT1155.balanceOf(accounts[2], id);
     console.log("nftBalance of account 2 ", nftBalance2.toString());
@@ -48,35 +48,26 @@ describe("LFGNFT1155", function () {
     console.log("nftBalance of account 3 ", nftBalance2.toString());
     assert.equal(nftBalance3.toString(), "5");
 
-  //   let account1TokenIds = await LFGNFT1155.tokensOfOwner(accounts[1]);
-  //   console.log("tokenIds of account1 ", JSON.stringify(account1TokenIds));
+    // let account1TokenIds = await LFGNFT1155.tokensOfOwner(accounts[1]);
+    // console.log("tokenIds of account1 ", JSON.stringify(account1TokenIds));
 
-  //   let royaltyInfo = await LFGNFT1155.royaltyInfo(account1TokenIds[0], 10000);
-  //   console.log("royaltyInfo ", JSON.stringify(royaltyInfo));
+    let royaltyInfo = await LFGNFT1155.royaltyInfo(id, 10000);
+    console.log("royaltyInfo ", JSON.stringify(royaltyInfo));
 
-  //   // Before set royalty, it should be 0
-  //   assert.equal(royaltyInfo["royaltyAmount"], "0");
+    // Before set royalty, it should be 0
+    assert.equal(royaltyInfo["royaltyAmount"], "0");
 
-  //   // set 10% royalty
-  //   await LFGNFT1155.setRoyalty(account1TokenIds[0], accounts[1], 1000, { from: owner });
+    // set 10% royalty
+    await expect(
+      LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: owner })
+    ).to.be.revertedWith("NFT: Invalid creator");
 
-  //   royaltyInfo = await LFGNFT1155.royaltyInfo(account1TokenIds[0], 10000);
-  //   console.log("royaltyInfo ", JSON.stringify(royaltyInfo));
+    await LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: accounts[1] })
 
-  //   assert.equal(royaltyInfo["receiver"], accounts[1]);
-  //   assert.equal(royaltyInfo["royaltyAmount"], "1000");
-  // });
+    royaltyInfo = await LFGNFT1155.royaltyInfo(id, 10000);
+    console.log("royaltyInfo ", JSON.stringify(royaltyInfo));
 
-  // it("test NFT Royalties", async function () {
-  //   await expect(
-  //     LFGNFT1155.mint(11, accounts[1], { from: owner })
-  //   ).to.be.revertedWith("NFT: cannot mint over max batch quantity");
-
-  //   await LFGNFT1155.setMaxBatchQuantity(20, { from: accounts[0] });
-
-  //   let getMaxBatchQuantity = await LFGNFT1155.maxBatchQuantity();
-  //   assert.equal(getMaxBatchQuantity.toString(), "20");
-
-  //   await LFGNFT1155.mint(11, accounts[1], { from: owner });
+    assert.equal(royaltyInfo["receiver"], accounts[1]);
+    assert.equal(royaltyInfo["royaltyAmount"], "1000");
   });
 });
