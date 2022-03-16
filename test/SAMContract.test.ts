@@ -69,7 +69,7 @@ describe("SAMContract", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], "0", "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 0, "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
       0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
@@ -133,7 +133,7 @@ describe("SAMContract", function () {
     await LFGNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 1, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 1, "10000000", latestBlock["timestamp"] + 1, 3600 * 24,
       0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
@@ -221,7 +221,7 @@ describe("SAMContract", function () {
     await LFGNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 1, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 1, "10000000", latestBlock["timestamp"] + 1, 3600 * 24,
       0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
@@ -254,7 +254,7 @@ describe("SAMContract", function () {
     await LFGNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
 
     let latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 2, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 2, "10000000", latestBlock["timestamp"] + 1, 3600 * 24,
       3600, 100000, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
@@ -330,7 +330,7 @@ describe("SAMContract", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[lastIndex], 0, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+    await SAMContract.addListing(LFGNFT.address, account2TokenIds[lastIndex], 0, "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
       0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
@@ -403,7 +403,7 @@ describe("SAMContract", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGFireNFT.address, account2TokenIds[0], 0, "10000000", "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
+    await SAMContract.addListing(LFGFireNFT.address, account2TokenIds[0], 0, "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
       0, 0, { from: accounts[2] });
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);

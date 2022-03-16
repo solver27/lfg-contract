@@ -27,8 +27,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         address indexed hostContract,
         uint256 tokenId,
         SellMode sellMode,
-        uint256 startPrice,
-        uint256 buyNowPrice,
+        uint256 _price,
         uint256 startTime,
         uint256 duration,
         uint256 discountInterval,
@@ -68,8 +67,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         address hostContract; // The source of the contract
         uint256 tokenId; // The NFT token ID
         SellMode sellMode; // The sell mode the NFT, fixed price, auction or dutch auction
-        uint256 startPrice; // The auction start price
-        uint256 buyNowPrice; // The price user can directly buy the NFT
+        uint256 price; // In fixed price sell mode, it is the fixed price, in auction mode, it is the start price
         uint256 startTime; // The timestamp of the listing creation
         uint256 duration; // The duration of the biddings, in seconds
         //bool dutchAuction; // Is this auction a dutch auction
@@ -138,8 +136,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         address _hostContract,
         uint256 _tokenId,
         SellMode _sellMode,
-        uint256 _startPrice,
-        uint256 _buyNowPrice,
+        uint256 _price,
         uint256 _startTime,
         uint256 _duration,
         uint256 _discountInterval,
@@ -153,14 +150,14 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         require(_duration > 0, "Invalid duration");
 
         if (_sellMode == SellMode.FixedPrice) {
-            require(_buyNowPrice > 0, "Invalid fixed price");
+            require(_price > 0, "Invalid fixed price");
         } else if (_sellMode == SellMode.Auction) {
-            require(_startPrice > 0, "Invalid auction start price");
+            require(_price > 0, "Invalid auction start price");
         } else if (_sellMode == SellMode.DutchAuction) {
             require(_discountInterval > 0, "Invalid discount interval");
             require(_discountAmount > 0, "Invalid discount amount");
             uint256 discount = (_discountAmount * _duration) / _discountInterval;
-            require(_startPrice > discount, "Start price lower than total discount");
+            require(_price > discount, "Start price lower than total discount");
         }
 
         _depositNft(msg.sender, _hostContract, _tokenId);
@@ -172,8 +169,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         listingRegistry[listingId].hostContract = _hostContract;
         listingRegistry[listingId].tokenId = _tokenId;
         listingRegistry[listingId].sellMode = _sellMode;
-        listingRegistry[listingId].startPrice = _startPrice;
-        listingRegistry[listingId].buyNowPrice = _buyNowPrice;
+        listingRegistry[listingId].price = _price;
         listingRegistry[listingId].startTime = _startTime;
         listingRegistry[listingId].duration = _duration;
         listingRegistry[listingId].discountInterval = _discountInterval;
@@ -188,8 +184,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
             _hostContract,
             _tokenId,
             _sellMode,
-            _startPrice,
-            _buyNowPrice,
+            _price,
             _startTime,
             _duration,
             _discountInterval,
@@ -209,7 +204,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
             uint256 timeElapsed;
             // If the auction haven't start, then already return the start price
             if (lst.startTime >= block.timestamp) {
-                return lst.startPrice;
+                return lst.price;
             }
 
             timeElapsed = block.timestamp - lst.startTime;
@@ -219,10 +214,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
                 timeElapsed = lst.duration;
             }
             uint256 discount = lst.discountAmount * (timeElapsed / lst.discountInterval);
-            return lst.startPrice - discount;
+            return lst.price - discount;
         }
 
-        return lst.buyNowPrice;
+        return lst.price;
     }
 
     function biddingOfAddr(address addr) public view returns (bytes32[] memory) {
@@ -248,10 +243,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
 
     function removeListing(bytes32 listingId) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
-        require(
-            lst.startTime + lst.duration < block.timestamp,
-            "The listing haven't expired"
-        );
+        require(lst.startTime + lst.duration < block.timestamp, "The listing haven't expired");
         require(lst.seller == msg.sender, "Only seller can remove");
         require(lst.biddingIds.length == 0, "Already received bidding, cannot close");
 
@@ -289,10 +281,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         emit NftTransfer(to, _hostContract, _tokenId);
     }
 
-    function setFireNftContract(address _address)
-        external
-        onlyOwner
-    {
+    function setFireNftContract(address _address) external onlyOwner {
         require(_address != address(0), "Invalid address");
         fireNftContractAddress = _address;
     }
@@ -309,10 +298,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         return this.onERC721Received.selector;
     }
 
-    function setNftWhiteListContract(INftWhiteList _whitelistContract)
-        external
-        onlyOwner
-    {
+    function setNftWhiteListContract(INftWhiteList _whitelistContract) external onlyOwner {
         nftWhiteListContract = _whitelistContract;
     }
 
@@ -322,10 +308,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
      * @param _fee: the fee rate
      * @param _burnRate: the burn fee rate
      */
-    function updateFeeRate(
-        uint256 _feeRate,
-        uint256 _royaltiesFeeRate
-    ) external onlyOwner {
+    function updateFeeRate(uint256 _feeRate, uint256 _royaltiesFeeRate) external onlyOwner {
         require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
         require(_royaltiesFeeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
 
