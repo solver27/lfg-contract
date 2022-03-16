@@ -75,7 +75,7 @@ contract SAMContractGas is SAMContractBase {
         );
         require(msg.sender != lst.seller, "Bidder cannot be seller");
 
-        uint256 minPrice = lst.startPrice;
+        uint256 minPrice = lst.price;
         // The last element is the current highest price
         if (lst.biddingIds.length > 0) {
             bytes32 lastBiddingId = lst.biddingIds[lst.biddingIds.length - 1];
@@ -113,8 +113,7 @@ contract SAMContractGas is SAMContractBase {
         address _hostContract,
         uint256 _tokenId,
         SellMode _sellMode,
-        uint256 _startPrice,
-        uint256 _buyNowPrice,
+        uint256 _price,
         uint256 _startTime,
         uint256 _duration,
         uint256 _discountInterval,
@@ -125,8 +124,7 @@ contract SAMContractGas is SAMContractBase {
             _hostContract,
             _tokenId,
             _sellMode,
-            _startPrice,
-            _buyNowPrice,
+            _price,
             _startTime,
             _duration,
             _discountInterval,

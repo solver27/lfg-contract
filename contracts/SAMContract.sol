@@ -107,13 +107,10 @@ contract SAMContract is SAMContractBase {
         listing storage lst = listingRegistry[listingId];
         require(lst.sellMode == SellMode.Auction, "Can only bid for listing on auction");
         require(block.timestamp >= lst.startTime, "The auction haven't start");
-        require(
-            lst.startTime + lst.duration >= block.timestamp,
-            "The auction already expired"
-        );
+        require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
         require(msg.sender != lst.seller, "Bidder cannot be seller");
 
-        uint256 minPrice = lst.startPrice;
+        uint256 minPrice = lst.price;
         // The last element is the current highest price
         if (lst.biddingIds.length > 0) {
             bytes32 lastBiddingId = lst.biddingIds[lst.biddingIds.length - 1];
@@ -150,8 +147,7 @@ contract SAMContract is SAMContractBase {
         address _hostContract,
         uint256 _tokenId,
         SellMode _sellMode,
-        uint256 _startPrice,
-        uint256 _buyNowPrice,
+        uint256 _price,
         uint256 _startTime,
         uint256 _duration,
         uint256 _discountInterval,
@@ -161,8 +157,7 @@ contract SAMContract is SAMContractBase {
             _hostContract,
             _tokenId,
             _sellMode,
-            _startPrice,
-            _buyNowPrice,
+            _price,
             _startTime,
             _duration,
             _discountInterval,
@@ -178,10 +173,7 @@ contract SAMContract is SAMContractBase {
         listing storage lst = listingRegistry[listingId];
         require(lst.sellMode != SellMode.Auction, "Auction not support buy now");
         require(block.timestamp >= lst.startTime, "The auction haven't start");
-        require(
-            lst.startTime + lst.duration >= block.timestamp,
-            "The auction already expired"
-        );
+        require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
         require(msg.sender != lst.seller, "Buyer cannot be seller");
 
         uint256 price = getPrice(listingId);
