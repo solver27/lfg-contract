@@ -296,6 +296,11 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         emit NftTransfer(to, _hostContract, _tokenId);
     }
 
+    /*
+     * @notice Set the Fire NFT contract address, it is a special NFT from gamerse.
+     * @dev Only callable by owner.
+     * @param _address: the NFT contract to whitelist
+     */
     function setFireNftContract(address _address) external onlyOwner {
         require(_address != address(0), "Invalid address");
         fireNftContractAddress = _address;
@@ -308,11 +313,29 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         address,
         address,
         uint256,
-        bytes memory
+        bytes calldata
     ) public virtual override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
+    /**
+     * Always returns `IERC1155Receiver.onERC1155Received.selector`.
+     */
+    function onERC1155Received(
+        address,
+        address,
+        uint256,
+        uint256,
+        bytes calldata
+    ) public returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    /*
+     * @notice Set the NFT whitelist contract
+     * @dev Only callable by owner.
+     * @param _whitelistContract: the NFT contract to whitelist
+     */
     function setNftWhiteListContract(INftWhiteList _whitelistContract) external onlyOwner {
         nftWhiteListContract = _whitelistContract;
     }

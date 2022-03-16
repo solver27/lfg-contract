@@ -24,8 +24,7 @@ describe("LFGNFT1155", function () {
     console.log(JSON.stringify(result));
     let id = result["logs"][0]["args"]["id"];
     console.log("id: ", id.toString());
-    //id = await LFGNFT1155.create(accounts[1], 10, "0x0", { from: accounts[1] });
-    //console.log(JSON.stringify(id));
+
     const nftBalance1 = await LFGNFT1155.balanceOf(accounts[1], id);
     console.log("nftBalance of account 1 ", nftBalance1.toString());
     assert.equal(nftBalance1.toString(), "10");
