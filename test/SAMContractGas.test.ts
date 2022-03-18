@@ -369,8 +369,7 @@ describe("SAMContractGas", function () {
 
     let ownerBalance = await web3.eth.getBalance(minter);
     console.log("Owner balance after revenue sweep ", ownerBalance.toString());
-    assert.isAbove(parseInt(ownerBalance.toString()), 10000201265059650000000);
-
+    assert.isAbove(parseInt(ownerBalance.toString()), 10000201265050000000000);
   });
 
   it("Test fire NFT cannot sell for gas", async function () {

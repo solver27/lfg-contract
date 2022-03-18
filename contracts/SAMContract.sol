@@ -189,7 +189,7 @@ contract SAMContract is SAMContractBase {
         }
 
         _transferToken(msg.sender, lst.seller, sellerAmount);
-        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
+        _transferNft(listingId, msg.sender, lst.hostContract, lst.tokenId);
 
         if (lst.hostContract == fireNftContractAddress) {
             _burnTokenOnFireNft(price);
@@ -221,7 +221,7 @@ contract SAMContract is SAMContractBase {
         }
 
         _processFee(msg.sender, bid.price);
-        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
+        _transferNft(lst.id, msg.sender, lst.hostContract, lst.tokenId);
 
         uint256 sellerAmount = bid.price;
         if (_checkRoyalties(lst.hostContract)) {

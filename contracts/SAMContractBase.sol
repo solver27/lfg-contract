@@ -8,6 +8,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/IERC2981.sol";
@@ -160,9 +161,9 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
             require(_price > discount, "Start price lower than total discount");
         }
 
-        _depositNft(msg.sender, _hostContract, _tokenId);
-
         bytes32 listingId = keccak256(abi.encodePacked(operationNonce, _hostContract, _tokenId));
+
+        _depositNft(listingId, msg.sender, _hostContract, _tokenId);
 
         listingRegistry[listingId].id = listingId;
         listingRegistry[listingId].seller = msg.sender;
@@ -248,39 +249,58 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         require(lst.biddingIds.length == 0, "Already received bidding, cannot close");
 
         // return the NFT to seller
-        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
+        _transferNft(listingId, msg.sender, lst.hostContract, lst.tokenId);
 
         _removeListing(lst.id, lst.seller);
     }
 
     function _depositNft(
+        bytes32 listingId,
         address from,
         address _hostContract,
         uint256 _tokenId
     ) internal {
-        ERC721 nftContract = ERC721(_hostContract);
-        nftContract.safeTransferFrom(from, address(this), _tokenId);
+        if (IERC165(_hostContract).supportsInterface(type(IERC721).interfaceId)) {
+            ERC721 nftContract = ERC721(_hostContract);
+            nftContract.safeTransferFrom(from, address(this), _tokenId);
+        } else if (IERC165(_hostContract).supportsInterface(type(IERC1155).interfaceId)) {
+            ERC1155 nftContract = ERC1155(_hostContract);
+            nftContract.safeTransferFrom(from, address(this), _tokenId, 1, "0x0");
+        }
 
-        bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
-        nftItems[itemId] = nftItem({owner: from, hostContract: _hostContract, tokenId: _tokenId});
+        nftItems[listingId] = nftItem({
+            owner: from,
+            hostContract: _hostContract,
+            tokenId: _tokenId
+        });
 
         emit NftDeposit(from, _hostContract, _tokenId);
     }
 
     function _transferNft(
+        bytes32 listingId,
         address to,
         address _hostContract,
         uint256 _tokenId
     ) internal {
-        bytes32 itemId = keccak256(abi.encodePacked(_hostContract, _tokenId));
+        if (IERC165(_hostContract).supportsInterface(type(IERC721).interfaceId)) {
+            ERC721 nftContract = ERC721(_hostContract);
+            nftContract.safeTransferFrom(address(this), to, _tokenId);
+        } else if (IERC165(_hostContract).supportsInterface(type(IERC1155).interfaceId)) {
+            ERC1155 nftContract = ERC1155(_hostContract);
+            nftContract.safeTransferFrom(address(this), to, _tokenId, 1, "0x0");
+        }
 
-        ERC721 nftContract = ERC721(_hostContract);
-        nftContract.safeTransferFrom(address(this), to, _tokenId);
-        delete nftItems[itemId];
+        delete nftItems[listingId];
 
         emit NftTransfer(to, _hostContract, _tokenId);
     }
 
+    /*
+     * @notice Set the Fire NFT contract address, it is a special NFT from gamerse.
+     * @dev Only callable by owner.
+     * @param _address: the NFT contract to whitelist
+     */
     function setFireNftContract(address _address) external onlyOwner {
         require(_address != address(0), "Invalid address");
         fireNftContractAddress = _address;
@@ -293,11 +313,29 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         address,
         address,
         uint256,
-        bytes memory
+        bytes calldata
     ) public virtual override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 
+    /**
+     * Always returns `IERC1155Receiver.onERC1155Received.selector`.
+     */
+    function onERC1155Received(
+        address,
+        address,
+        uint256,
+        uint256,
+        bytes calldata
+    ) public returns (bytes4) {
+        return this.onERC1155Received.selector;
+    }
+
+    /*
+     * @notice Set the NFT whitelist contract
+     * @dev Only callable by owner.
+     * @param _whitelistContract: the NFT contract to whitelist
+     */
     function setNftWhiteListContract(INftWhiteList _whitelistContract) external onlyOwner {
         nftWhiteListContract = _whitelistContract;
     }
