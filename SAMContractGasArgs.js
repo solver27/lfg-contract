@@ -1,0 +1,4 @@
+module.exports = [
+  "0x3ca3822163D049364E67bE19a0D3B2F03B7e99b5", // MULTISIG_PUBKEY
+  "0xBC289f68248411754915E69a8a3d51599b857a8F", // White list contract
+];
