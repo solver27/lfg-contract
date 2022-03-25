@@ -43,10 +43,6 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
 
     event ClaimNFT(bytes32 indexed listingId, bytes32 indexed biddingId, address indexed buyer);
 
-    event NftDeposit(address indexed sender, address indexed hostContract, uint256 tokenId);
-
-    event NftTransfer(address indexed sender, address indexed hostContract, uint256 tokenId);
-
     event RoyaltiesPaid(
         address indexed hostContract,
         uint256 indexed tokenId,
@@ -273,8 +269,6 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
             hostContract: _hostContract,
             tokenId: _tokenId
         });
-
-        emit NftDeposit(from, _hostContract, _tokenId);
     }
 
     function _transferNft(
@@ -292,8 +286,6 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         }
 
         delete nftItems[listingId];
-
-        emit NftTransfer(to, _hostContract, _tokenId);
     }
 
     /*

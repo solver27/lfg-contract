@@ -5,6 +5,7 @@
 
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IBurnToken.sol";
 import "./interfaces/IERC2981.sol";
 import "./SAMContractBase.sol";
@@ -31,11 +32,7 @@ contract SAMContract is SAMContractBase {
 
     IERC20 public lfgToken;
 
-    struct userToken {
-        uint256 lockedAmount;
-    }
-
-    mapping(address => userToken) public addrTokens;
+    mapping(address => uint256) public addrTokens;
 
     constructor(
         address _owner,
@@ -255,16 +252,18 @@ contract SAMContract is SAMContractBase {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
         uint256 feeToBurn = (fee * feeBurnRate) / FEE_RATE_BASE;
         uint256 revenue = fee - feeToBurn;
-        lfgToken.transferFrom(buyer, revenueAddress, revenue);
-        lfgToken.transferFrom(buyer, burnAddress, feeToBurn);
-        totalBurnAmount += feeToBurn;
-
+        SafeERC20.safeTransferFrom(lfgToken, buyer, revenueAddress, revenue);
         revenueAmount += revenue;
+
+        SafeERC20.safeTransferFrom(lfgToken,buyer, burnAddress, feeToBurn);
+        totalBurnAmount += feeToBurn;
     }
 
     function _depositToken(address addr, uint256 _amount) internal {
-        lfgToken.transferFrom(addr, address(this), _amount);
-        addrTokens[addr].lockedAmount += _amount;
+        // Using lfgToken.safeTransferFrom(addr, address(this), _amount) will increase
+        // contract size for 0.13KB, which will make the contract no deployable.
+        SafeERC20.safeTransferFrom(lfgToken, addr, address(this), _amount);
+        addrTokens[addr] += _amount;
         totalEscrowAmount += _amount;
     }
 
@@ -273,9 +272,9 @@ contract SAMContract is SAMContractBase {
         address to,
         uint256 _amount
     ) internal {
-        require(addrTokens[from].lockedAmount >= _amount, "The locked amount is not enough");
-        lfgToken.transfer(to, _amount);
-        addrTokens[from].lockedAmount -= _amount;
+        require(addrTokens[from] >= _amount, "The locked amount is not enough");
+        SafeERC20.safeTransfer(lfgToken, to, _amount);
+        addrTokens[from] -= _amount;
         totalEscrowAmount -= _amount;
     }
 
