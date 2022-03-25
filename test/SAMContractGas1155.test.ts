@@ -1,7 +1,6 @@
 const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
-const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
 const SAMContractGasArt = hre.artifacts.require("SAMContractGas");
@@ -21,15 +20,12 @@ async function getBiddingOfAddr(samContract, addr) {
 }
 
 describe("SAMContractGas1155", function () {
-  let LFGToken = null;
   let LFGNFT1155 = null;
   let NftWhiteList = null;
   let SAMContractGas = null;
   let accounts = ["", "", "", "", "", "", ""],
     minter,
-    burnAddress,
-    revenueAddress,
-    burnAddress1;
+    revenueAddress;
 
   before("Deploy contract", async function () {
     try {
@@ -42,16 +38,8 @@ describe("SAMContractGas1155", function () {
         accounts[5],
         accounts[6],
         minter,
-        burnAddress,
         revenueAddress,
-        burnAddress1,
       ] = await web3.eth.getAccounts();
-      LFGToken = await LFGTokenArt.new(
-        "LFG Token",
-        "LFG",
-        "1000000000000000000000000000",
-        minter
-      );
 
       LFGNFT1155 = await LFGNFT1155Art.new(minter, "");
 
@@ -69,7 +57,6 @@ describe("SAMContractGas1155", function () {
 
       // 2.5% fee, 10% royalties fee.
       await SAMContractGas.updateFeeRate(250, 1000, { from: minter });
-
     } catch (err) {
       console.log(err);
     }
@@ -129,8 +116,11 @@ describe("SAMContractGas1155", function () {
 
     await hre.network.provider.send("evm_mine");
 
-    let nftBalanceOfAccount1  = await LFGNFT1155.balanceOf(accounts[1], id);
-    console.log("balance of of account 1 ", JSON.stringify(nftBalanceOfAccount1));
+    let nftBalanceOfAccount1 = await LFGNFT1155.balanceOf(accounts[1], id);
+    console.log(
+      "balance of of account 1 ",
+      JSON.stringify(nftBalanceOfAccount1)
+    );
     assert.equal(nftBalanceOfAccount1, "1");
 
     nftBalanceOfAccount2 = await LFGNFT1155.balanceOf(accounts[2], id);

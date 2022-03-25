@@ -18,16 +18,32 @@ describe("SAMContract", function () {
   let SAMContract = null;
   let BurnToken = null;
   let accounts = ["", "", "", "", "", "", ""],
-    minter, burnAddress, revenueAddress, burnAddress1;
+    minter,
+    burnAddress,
+    revenueAddress,
+    burnAddress1;
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5], accounts[6],
-        minter, burnAddress, revenueAddress, burnAddress1]
-        = await web3.eth.getAccounts();
-      LFGToken = await LFGTokenArt.new("LFG Token",
+      [
+        accounts[0],
+        accounts[1],
+        accounts[2],
+        accounts[3],
+        accounts[4],
+        accounts[5],
+        accounts[6],
+        minter,
+        burnAddress,
+        revenueAddress,
+        burnAddress1,
+      ] = await web3.eth.getAccounts();
+      LFGToken = await LFGTokenArt.new(
+        "LFG Token",
         "LFG",
-        "1000000000000000000000000000", minter);
+        "1000000000000000000000000000",
+        minter
+      );
 
       LFGNFT = await LFGNFTArt.new();
 
@@ -35,19 +51,32 @@ describe("SAMContract", function () {
 
       NftWhiteList = await NftWhiteListArt.new(minter);
 
-      SAMContract = await SAMContractArt.new(minter, LFGToken.address, NftWhiteList.address, burnAddress, revenueAddress);
+      SAMContract = await SAMContractArt.new(
+        minter,
+        LFGToken.address,
+        NftWhiteList.address,
+        burnAddress,
+        revenueAddress
+      );
 
       // This one must call from owner
-      await NftWhiteList.setNftContractWhitelist(LFGNFT.address, true, { from: minter });
-      await NftWhiteList.setNftContractWhitelist(LFGFireNFT.address, true, { from: minter });
+      await NftWhiteList.setNftContractWhitelist(LFGNFT.address, true, {
+        from: minter,
+      });
+      await NftWhiteList.setNftContractWhitelist(LFGFireNFT.address, true, {
+        from: minter,
+      });
 
       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
       await SAMContract.updateFeeRate(250, 1000, { from: minter });
       await SAMContract.updateBurnFeeRate(5000, { from: minter });
 
-      BurnToken = await BurnTokenArt.new(minter, LFGToken.address, burnAddress1);
+      BurnToken = await BurnTokenArt.new(
+        minter,
+        LFGToken.address,
+        burnAddress1
+      );
       await BurnToken.setOperator(SAMContract.address, true, { from: minter });
-
     } catch (err) {
       console.log(err);
     }
@@ -69,8 +98,17 @@ describe("SAMContract", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 0, "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] });
+    await SAMContract.addListing(
+      LFGNFT.address,
+      account2TokenIds[0],
+      0,
+      "20000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -78,12 +116,14 @@ describe("SAMContract", function () {
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount);
+    await LFGToken.transfer(accounts[1], testDepositAmount, { from: minter });
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());
 
-    await LFGToken.approve(SAMContract.address, testDepositAmount, { from: accounts[1] });
+    await LFGToken.approve(SAMContract.address, testDepositAmount, {
+      from: accounts[1],
+    });
 
     await expect(
       SAMContract.placeBid(listingId, "10000000", { from: accounts[1] })
@@ -130,11 +170,22 @@ describe("SAMContract", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
+    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], {
+      from: accounts[2],
+    });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 1, "10000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] });
+    await SAMContract.addListing(
+      LFGNFT.address,
+      account2TokenIds[0],
+      1,
+      "10000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -144,8 +195,10 @@ describe("SAMContract", function () {
 
     const testDepositAmount = "100000000000000000000000";
     for (let accountId = 3; accountId < 6; ++accountId) {
-      await LFGToken.transfer(accounts[accountId], testDepositAmount);
-      await LFGToken.approve(SAMContract.address, testDepositAmount, { from: accounts[accountId] }); // to charge fees
+      await LFGToken.transfer(accounts[accountId], testDepositAmount, { from: minter });
+      await LFGToken.approve(SAMContract.address, testDepositAmount, {
+        from: accounts[accountId],
+      }); // to charge fees
     }
 
     await expect(
@@ -173,7 +226,9 @@ describe("SAMContract", function () {
     ).to.be.revertedWith("The bidding period haven't complete");
 
     const today = Math.round(new Date() / 1000);
-    await hre.network.provider.send("evm_setNextBlockTimestamp", [today + 3601 * 24]);
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [
+      today + 3601 * 24,
+    ]);
     await hre.network.provider.send("evm_mine");
 
     await expect(
@@ -218,11 +273,22 @@ describe("SAMContract", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
+    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], {
+      from: accounts[2],
+    });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 1, "10000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] });
+    await SAMContract.addListing(
+      LFGNFT.address,
+      account2TokenIds[0],
+      1,
+      "10000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -234,7 +300,9 @@ describe("SAMContract", function () {
     ).to.be.revertedWith("The listing haven't expired");
 
     const today = Math.round(new Date() / 1000);
-    await hre.network.provider.send("evm_setNextBlockTimestamp", [today + 3601 * 48]);
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [
+      today + 3601 * 48,
+    ]);
     await hre.network.provider.send("evm_mine");
 
     await expect(
@@ -251,11 +319,22 @@ describe("SAMContract", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
+    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], {
+      from: accounts[2],
+    });
 
     let latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[0], 2, "10000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      3600, 100000, { from: accounts[2] });
+    await SAMContract.addListing(
+      LFGNFT.address,
+      account2TokenIds[0],
+      2,
+      "10000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      3600,
+      100000,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -267,7 +346,9 @@ describe("SAMContract", function () {
     ).to.be.revertedWith("The listing haven't expired");
 
     latestBlock = await hre.ethers.provider.getBlock("latest");
-    await hre.network.provider.send("evm_setNextBlockTimestamp", [latestBlock["timestamp"] + 3600 * 12]);
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [
+      latestBlock["timestamp"] + 3600 * 12,
+    ]);
     await hre.network.provider.send("evm_mine");
 
     let currentPrice = await SAMContract.getPrice(listingId);
@@ -323,15 +404,28 @@ describe("SAMContract", function () {
 
     const lastIndex = account2TokenIds.length - 1;
 
-    await LFGNFT.setRoyalty(account2TokenIds[lastIndex], accounts[6], 2000, { from: minter });
+    await LFGNFT.setRoyalty(account2TokenIds[lastIndex], accounts[6], 2000, {
+      from: minter,
+    });
 
-    await LFGNFT.approve(SAMContract.address, account2TokenIds[lastIndex], { from: accounts[2] });
+    await LFGNFT.approve(SAMContract.address, account2TokenIds[lastIndex], {
+      from: accounts[2],
+    });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGNFT.address, account2TokenIds[lastIndex], 0, "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] });
+    await SAMContract.addListing(
+      LFGNFT.address,
+      account2TokenIds[lastIndex],
+      0,
+      "20000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -339,12 +433,14 @@ describe("SAMContract", function () {
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount);
+    await LFGToken.transfer(accounts[1], testDepositAmount, { from: minter });
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());
 
-    await LFGToken.approve(SAMContract.address, testDepositAmount, { from: accounts[1] });
+    await LFGToken.approve(SAMContract.address, testDepositAmount, {
+      from: accounts[1],
+    });
 
     await SAMContract.buyNow(listingId, { from: accounts[1] });
 
@@ -383,7 +479,7 @@ describe("SAMContract", function () {
 
   it("test burn token when fire NFT was sold", async function () {
     // Top up burn contract
-    await LFGToken.transfer(BurnToken.address, "100000000000000000000000");
+    await LFGToken.transfer(BurnToken.address, "100000000000000000000000", { from: minter });
     await BurnToken.setBurnRate(1000, { from: minter });
     await SAMContract.setFireNftContract(LFGFireNFT.address, { from: minter });
     await SAMContract.setBurnTokenContract(BurnToken.address, { from: minter });
@@ -403,8 +499,17 @@ describe("SAMContract", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContract.addListing(LFGFireNFT.address, account2TokenIds[0], 0, "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] });
+    await SAMContract.addListing(
+      LFGFireNFT.address,
+      account2TokenIds[0],
+      0,
+      "20000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -412,12 +517,14 @@ describe("SAMContract", function () {
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount);
+    await LFGToken.transfer(accounts[1], testDepositAmount, { from: minter });
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());
 
-    await LFGToken.approve(SAMContract.address, testDepositAmount, { from: accounts[1] });
+    await LFGToken.approve(SAMContract.address, testDepositAmount, {
+      from: accounts[1],
+    });
 
     await SAMContract.buyNow(listingId, { from: accounts[1] });
 

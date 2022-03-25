@@ -121,7 +121,7 @@ describe("SAMContract1155", function () {
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount);
+    await LFGToken.transfer(accounts[1], testDepositAmount, { from: minter });
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());

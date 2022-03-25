@@ -1,12 +1,10 @@
 const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
-const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
 const SAMContractGasArt = hre.artifacts.require("SAMContractGas");
-const BurnTokenArt = hre.artifacts.require("BurnToken");
 const BN = require("bn.js");
 const { createImportSpecifier } = require("typescript");
 
@@ -23,23 +21,27 @@ async function getBiddingOfAddr(samContract, addr) {
 }
 
 describe("SAMContractGas", function () {
-  let LFGToken = null;
   let LFGNFT = null;
   let LFGFireNFT = null;
   let NftWhiteList = null;
   let SAMContractGas = null;
-  let BurnToken = null;
   let accounts = ["", "", "", "", "", "", ""],
-    minter, burnAddress, revenueAddress, burnAddress1;
+    minter,
+    revenueAddress;
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], accounts[2], accounts[3], accounts[4], accounts[5], accounts[6],
-        minter, burnAddress, revenueAddress, burnAddress1]
-        = await web3.eth.getAccounts();
-      LFGToken = await LFGTokenArt.new("LFG Token",
-        "LFG",
-        "1000000000000000000000000000", minter);
+      [
+        accounts[0],
+        accounts[1],
+        accounts[2],
+        accounts[3],
+        accounts[4],
+        accounts[5],
+        accounts[6],
+        minter,
+        revenueAddress
+      ] = await web3.eth.getAccounts();
 
       LFGNFT = await LFGNFTArt.new();
 
@@ -47,18 +49,21 @@ describe("SAMContractGas", function () {
 
       NftWhiteList = await NftWhiteListArt.new(minter);
 
-      SAMContractGas = await SAMContractGasArt.new(minter, NftWhiteList.address);
+      SAMContractGas = await SAMContractGasArt.new(
+        minter,
+        NftWhiteList.address
+      );
 
       // This one must call from owner
-      await NftWhiteList.setNftContractWhitelist(LFGNFT.address, true, { from: minter });
-      await NftWhiteList.setNftContractWhitelist(LFGFireNFT.address, true, { from: minter });
+      await NftWhiteList.setNftContractWhitelist(LFGNFT.address, true, {
+        from: minter,
+      });
+      await NftWhiteList.setNftContractWhitelist(LFGFireNFT.address, true, {
+        from: minter,
+      });
 
       // 2.5% fee, 10% royalties fee.
       await SAMContractGas.updateFeeRate(250, 1000, { from: minter });
-
-      BurnToken = await BurnTokenArt.new(minter, LFGToken.address, burnAddress1);
-      await BurnToken.setOperator(SAMContractGas.address, true, { from: minter });
-
     } catch (err) {
       console.log(err);
     }
@@ -83,8 +88,17 @@ describe("SAMContractGas", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContractGas.addListing(LFGNFT.address, account2TokenIds[0], 0, "2000000000000000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] });
+    await SAMContractGas.addListing(
+      LFGNFT.address,
+      account2TokenIds[0],
+      0,
+      "2000000000000000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -92,10 +106,16 @@ describe("SAMContractGas", function () {
     let listingId = listingResult[0];
 
     await expect(
-      SAMContractGas.placeBid(listingId, { from: accounts[1], value: "1000000000000000000" })
+      SAMContractGas.placeBid(listingId, {
+        from: accounts[1],
+        value: "1000000000000000000",
+      })
     ).to.be.revertedWith("Can only bid for listing on auction");
 
-    await SAMContractGas.buyNow(listingId, { from: accounts[1], value: hre.ethers.utils.parseEther("2.05") }); // 20500000
+    await SAMContractGas.buyNow(listingId, {
+      from: accounts[1],
+      value: hre.ethers.utils.parseEther("2.05"),
+    }); // 20500000
 
     await hre.network.provider.send("evm_mine");
 
@@ -105,7 +125,10 @@ describe("SAMContractGas", function () {
 
     let balanceOfAccount1 = await web3.eth.getBalance(accounts[1]);
     console.log("Balance of account 1 ", balanceOfAccount1.toString());
-    assert.isBelow(parseInt(balanceOfAccount1.toString()), 9998000000000000000000);
+    assert.isBelow(
+      parseInt(balanceOfAccount1.toString()),
+      9998000000000000000000
+    );
 
     account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account0 ", JSON.stringify(account2TokenIds));
@@ -116,7 +139,10 @@ describe("SAMContractGas", function () {
 
     let account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(account2Tokens["claimableAmount"].toString(), "2000000000000000000");
+    assert.equal(
+      account2Tokens["claimableAmount"].toString(),
+      "2000000000000000000"
+    );
 
     listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
@@ -124,7 +150,10 @@ describe("SAMContractGas", function () {
     await SAMContractGas.claimBalance({ from: accounts[2] });
     balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001999357036928800000);
+    assert.isAbove(
+      parseInt(balanceOfAccount2.toString()),
+      10001999337036928800000
+    );
 
     account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
@@ -143,11 +172,22 @@ describe("SAMContractGas", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(SAMContractGas.address, account2TokenIds[0], { from: accounts[2] });
+    await LFGNFT.approve(SAMContractGas.address, account2TokenIds[0], {
+      from: accounts[2],
+    });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContractGas.addListing(LFGNFT.address, account2TokenIds[0], 1, "1000000000000000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] });
+    await SAMContractGas.addListing(
+      LFGNFT.address,
+      account2TokenIds[0],
+      1,
+      "1000000000000000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -156,18 +196,36 @@ describe("SAMContractGas", function () {
     let listingId = listingResult[0];
 
     await expect(
-      SAMContractGas.placeBid(listingId, { from: accounts[3], value: "1000000000000000000" })
+      SAMContractGas.placeBid(listingId, {
+        from: accounts[3],
+        value: "1000000000000000000",
+      })
     ).to.be.revertedWith("Bid price too low");
 
-    await SAMContractGas.placeBid(listingId, { from: accounts[3], value: "1100000000000000000" });
-    await SAMContractGas.placeBid(listingId, { from: accounts[3], value: "1150000000000000000" });
+    await SAMContractGas.placeBid(listingId, {
+      from: accounts[3],
+      value: "1100000000000000000",
+    });
+    await SAMContractGas.placeBid(listingId, {
+      from: accounts[3],
+      value: "1150000000000000000",
+    });
 
     await expect(
-      SAMContractGas.placeBid(listingId, { from: accounts[4], value: "1100000000000000000" })
+      SAMContractGas.placeBid(listingId, {
+        from: accounts[4],
+        value: "1100000000000000000",
+      })
     ).to.be.revertedWith("Bid price too low");
 
-    await SAMContractGas.placeBid(listingId, { from: accounts[4], value: "1200000000000000000" });
-    await SAMContractGas.placeBid(listingId, { from: accounts[5], value: "1500000000000000000" });
+    await SAMContractGas.placeBid(listingId, {
+      from: accounts[4],
+      value: "1200000000000000000",
+    });
+    await SAMContractGas.placeBid(listingId, {
+      from: accounts[5],
+      value: "1500000000000000000",
+    });
 
     //const biddings = await getBiddingOfAddr(SAMContractGas, accounts[3]);
     const biddingIds = await SAMContractGas.biddingOfAddr(accounts[3]);
@@ -181,7 +239,9 @@ describe("SAMContractGas", function () {
     ).to.be.revertedWith("The bidding period haven't complete");
 
     const today = Math.round(new Date() / 1000);
-    await hre.network.provider.send("evm_setNextBlockTimestamp", [today + 3601 * 24]);
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [
+      today + 3601 * 24,
+    ]);
     await hre.network.provider.send("evm_mine");
 
     await expect(
@@ -190,18 +250,27 @@ describe("SAMContractGas", function () {
 
     const biddingsOfAddr5 = await getBiddingOfAddr(SAMContractGas, accounts[5]);
 
-    await SAMContractGas.claimNft(biddingsOfAddr5[0][0], { from: accounts[5], value: "37500000000000000" });
+    await SAMContractGas.claimNft(biddingsOfAddr5[0][0], {
+      from: accounts[5],
+      value: "37500000000000000",
+    });
     listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
 
     let account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(account2Tokens["claimableAmount"].toString(), "1500000000000000000");
+    assert.equal(
+      account2Tokens["claimableAmount"].toString(),
+      "1500000000000000000"
+    );
 
     // Account 3 bid failed, should be auto refunded
     let account3Tokens = await SAMContractGas.addrTokens(accounts[3]);
     console.log("Escrow tokens of account 3 ", JSON.stringify(account3Tokens));
-    assert.equal(account3Tokens["claimableAmount"].toString(), "2250000000000000000");
+    assert.equal(
+      account3Tokens["claimableAmount"].toString(),
+      "2250000000000000000"
+    );
 
     let revenueAmount = await SAMContractGas.revenueAmount();
     assert.equal(revenueAmount.toString(), "87500000000000000");
@@ -220,11 +289,22 @@ describe("SAMContractGas", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(SAMContractGas.address, account2TokenIds[0], { from: accounts[2] });
+    await LFGNFT.approve(SAMContractGas.address, account2TokenIds[0], {
+      from: accounts[2],
+    });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContractGas.addListing(LFGNFT.address, account2TokenIds[0], 1, "10000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] });
+    await SAMContractGas.addListing(
+      LFGNFT.address,
+      account2TokenIds[0],
+      1,
+      "10000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -236,7 +316,9 @@ describe("SAMContractGas", function () {
     ).to.be.revertedWith("The listing haven't expired");
 
     const today = Math.round(new Date() / 1000);
-    await hre.network.provider.send("evm_setNextBlockTimestamp", [today + 3601 * 48]);
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [
+      today + 3601 * 48,
+    ]);
     await hre.network.provider.send("evm_mine");
 
     await expect(
@@ -253,11 +335,22 @@ describe("SAMContractGas", function () {
     let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
     console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
 
-    await LFGNFT.approve(SAMContractGas.address, account2TokenIds[0], { from: accounts[2] });
+    await LFGNFT.approve(SAMContractGas.address, account2TokenIds[0], {
+      from: accounts[2],
+    });
 
     let latestBlock = await hre.ethers.provider.getBlock("latest");
-    await SAMContractGas.addListing(LFGNFT.address, account2TokenIds[0], 2, "1000000000000000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      3600, 100000, { from: accounts[2] });
+    await SAMContractGas.addListing(
+      LFGNFT.address,
+      account2TokenIds[0],
+      2,
+      "1000000000000000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      3600,
+      100000,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
@@ -269,20 +362,22 @@ describe("SAMContractGas", function () {
     ).to.be.revertedWith("The listing haven't expired");
 
     latestBlock = await hre.ethers.provider.getBlock("latest");
-    await hre.network.provider.send("evm_setNextBlockTimestamp", [latestBlock["timestamp"] + 3600 * 12]);
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [
+      latestBlock["timestamp"] + 3600 * 12,
+    ]);
     await hre.network.provider.send("evm_mine");
 
     let currentPrice = await SAMContractGas.getPrice(listingId);
     console.log("currentPrice ", currentPrice.toString());
 
-    await SAMContractGas.buyNow(listingId, { from: accounts[1], value: "1024999999998770000" });
+    await SAMContractGas.buyNow(listingId, {
+      from: accounts[1],
+      value: "1024999999998770000",
+    });
 
     let account1TokenIds = await LFGNFT.tokensOfOwner(accounts[1]);
     console.log("tokenIds of account 1 ", JSON.stringify(account1TokenIds));
     assert.equal(account1TokenIds[1], "4");
-
-    let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
-    console.log("Balance of account 2 ", balanceOfAccount2.toString());
 
     const account1Tokens = await SAMContractGas.addrTokens(accounts[1]);
     console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
@@ -315,22 +410,38 @@ describe("SAMContractGas", function () {
     const lastIndex = account2TokenIds.length - 1;
 
     // 20% Royalties
-    await LFGNFT.setRoyalty(account2TokenIds[lastIndex], accounts[6], 2000, { from: minter });
+    await LFGNFT.setRoyalty(account2TokenIds[lastIndex], accounts[6], 2000, {
+      from: minter,
+    });
 
-    await LFGNFT.approve(SAMContractGas.address, account2TokenIds[lastIndex], { from: accounts[2] });
+    await LFGNFT.approve(SAMContractGas.address, account2TokenIds[lastIndex], {
+      from: accounts[2],
+    });
 
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await SAMContractGas.addListing(LFGNFT.address, account2TokenIds[lastIndex], 0, "2000000000000000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] });
+    await SAMContractGas.addListing(
+      LFGNFT.address,
+      account2TokenIds[lastIndex],
+      0,
+      "2000000000000000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
 
     let listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
     let listingId = listingResult[0];
 
-    await SAMContractGas.buyNow(listingId, { from: accounts[1], value: "2050000000000000000" });
+    await SAMContractGas.buyNow(listingId, {
+      from: accounts[1],
+      value: "2050000000000000000",
+    });
 
     let account1Tokens = await SAMContractGas.addrTokens(accounts[1]);
     console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
@@ -360,8 +471,9 @@ describe("SAMContractGas", function () {
     let revenueAmount = await SAMContractGas.revenueAmount();
     assert.equal(revenueAmount.toString(), "202499999999970000");
 
-    await expect(
-      SAMContractGas.revenueSweep()).to.be.revertedWith("Ownable: caller is not the owner");
+    await expect(SAMContractGas.revenueSweep()).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
     await SAMContractGas.revenueSweep({ from: minter });
 
     revenueAmount = await SAMContractGas.revenueAmount();
@@ -373,8 +485,10 @@ describe("SAMContractGas", function () {
   });
 
   it("Test fire NFT cannot sell for gas", async function () {
-    // Top up burn contract
-    await SAMContractGas.setFireNftContract(LFGFireNFT.address, { from: minter });
+    // Set fire NFT contract address
+    await SAMContractGas.setFireNftContract(LFGFireNFT.address, {
+      from: minter,
+    });
 
     let supply = await LFGFireNFT.totalSupply();
     console.log("supply ", supply.toString());
@@ -391,7 +505,18 @@ describe("SAMContractGas", function () {
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    await expect(SAMContractGas.addListing(LFGFireNFT.address, account2TokenIds[0], 0, "20000000", latestBlock["timestamp"] + 1, 3600 * 24,
-      0, 0, { from: accounts[2] })).to.be.revertedWith("FireNFT can only sell for LFG");
+    await expect(
+      SAMContractGas.addListing(
+        LFGFireNFT.address,
+        account2TokenIds[0],
+        0,
+        "20000000",
+        latestBlock["timestamp"] + 1,
+        3600 * 24,
+        0,
+        0,
+        { from: accounts[2] }
+      )
+    ).to.be.revertedWith("FireNFT can only sell for LFG");
   });
 });
