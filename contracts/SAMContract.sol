@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-//** SAM(Social Aggregator Marketplace) Contract */
+//** SAM(Social Aggregator Marketplace) Contract trade by ERC20 token(LFG, USDT) */
 //** Author Xiao Shengguang : SAM(Social Aggregator Marketplace) Contract 2022.1 */
 
 pragma solidity ^0.8.0;
@@ -19,6 +19,7 @@ contract SAMContract is SAMContractBase {
     // The address to burn token
     address public burnAddress;
 
+    // The total burned token amount
     uint256 public totalBurnAmount;
 
     // The revenue address

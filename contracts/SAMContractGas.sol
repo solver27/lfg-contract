@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-//** SAM(Social Aggregator Marketplace) Contract */
+//** SAM(Social Aggregator Marketplace) Contract trade using GAS(ETH, BNB)*/
 //** Author Xiao Shengguang : SAM(Social Aggregator Marketplace) Contract 2022.1 */
 
 pragma solidity ^0.8.0;

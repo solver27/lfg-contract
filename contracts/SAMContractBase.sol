@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-//** SAM(Social Aggregator Marketplace) Contract */
-//** Author Xiao Shengguang : SAM(Social Aggregator Marketplace) Contract 2022.1 */
+//** SAM(Social Aggregator Marketplace) Base Contract, other marketplace contract will
+//** inherit this contract */
+//** Author Xiao Shengguang : SAM(Social Aggregator Marketplace) Base Contract 2022.1 */
 
 pragma solidity ^0.8.0;
 
@@ -127,7 +128,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
 
     /*
      * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
-     * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
+     * @dev Only the token owner can call, because need to transfer the ownership of the token to marketplace contract.
      */
     function _addListing(
         address _hostContract,
@@ -193,6 +194,11 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         return addrListingIds[addr];
     }
 
+    /*
+     * @notice Get the price of Dutch auction and fixed price item.
+     * @dev Not support auction item which need to get from the lastest bid.
+     * @param listingId: the listing item id.
+     */
     function getPrice(bytes32 listingId) public view returns (uint256) {
         listing storage lst = listingRegistry[listingId];
         require(lst.startTime > 0, "The listing doesn't exist");
@@ -217,6 +223,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         return lst.price;
     }
 
+    /*
+     * @notice Get all the biddings of an address.
+     * @param addr: the address want to get.
+     */
     function biddingOfAddr(address addr) public view returns (bytes32[] memory) {
         return addrBiddingIds[addr];
     }
@@ -238,6 +248,11 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         emit ListingRemoved(listingId, seller);
     }
 
+    /*
+     * @notice Remove a listing from the marketplace, can only remove if the duration finished and
+     *         the item didn't receive any bid(For auction item).
+     * @param listingId: the listing want to remove.
+     */
     function removeListing(bytes32 listingId) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
         require(lst.startTime + lst.duration < block.timestamp, "The listing haven't expired");
@@ -326,7 +341,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     /*
      * @notice Set the NFT whitelist contract
      * @dev Only callable by owner.
-     * @param _whitelistContract: the NFT contract to whitelist
+     * @param _whitelistContract: the contract address which manage the NFT whitelist
      */
     function setNftWhiteListContract(INftWhiteList _whitelistContract) external onlyOwner {
         nftWhiteListContract = _whitelistContract;
@@ -335,8 +350,8 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     /*
      * @notice Update the fee rate and burn fee rate from the burn amount
      * @dev Only callable by owner.
-     * @param _fee: the fee rate
-     * @param _burnRate: the burn fee rate
+     * @param _feeRate: the fee rate the contract charge.
+     * @param _royaltiesFeeRate: the royalties fee rate the contract charge.
      */
     function updateFeeRate(uint256 _feeRate, uint256 _royaltiesFeeRate) external onlyOwner {
         require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
