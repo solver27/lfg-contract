@@ -43,7 +43,7 @@ describe("SAMContractGas", function () {
         revenueAddress
       ] = await web3.eth.getAccounts();
 
-      LFGNFT = await LFGNFTArt.new();
+      LFGNFT = await LFGNFTArt.new(minter);
 
       LFGFireNFT = await LFGFireNFTArt.new();
 

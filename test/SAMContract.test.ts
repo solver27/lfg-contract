@@ -45,7 +45,7 @@ describe("SAMContract", function () {
         minter
       );
 
-      LFGNFT = await LFGNFTArt.new();
+      LFGNFT = await LFGNFTArt.new(minter);
 
       LFGFireNFT = await LFGFireNFTArt.new();
 

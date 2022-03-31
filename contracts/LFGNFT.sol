@@ -52,7 +52,10 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
 
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
 
-    constructor() ERC721("LFGNFT", "LFGNFT") {
+    constructor(address _owner) ERC721("LFGNFT", "LFGNFT") {
+        require(_owner != address(0), "Invalid owner address");
+        _transferOwnership(_owner);
+
         _registerInterface(_INTERFACE_ID_ERC2981);
 
         maxSupply = 10000;

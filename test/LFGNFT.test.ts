@@ -8,12 +8,13 @@ const { createImportSpecifier } = require("typescript");
 describe("LFGNFT", function () {
   let LFGNFT = null;
   let accounts = ["", ""],
+    owner,
     minter;
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], minter] = await web3.eth.getAccounts();
-      LFGNFT = await LFGNFTArt.new();
+      [accounts[0], accounts[1], owner, minter] = await web3.eth.getAccounts();
+      LFGNFT = await LFGNFTArt.new(owner);
     } catch (err) {
       console.log(err);
     }
@@ -34,10 +35,15 @@ describe("LFGNFT", function () {
     assert.equal(royaltyInfo["royaltyAmount"], "0");
 
     // set 10% royalty
-    await LFGNFT.setRoyalty(account1TokenIds[0], accounts[1], 1000, { from: minter });
+    await LFGNFT.setRoyalty(account1TokenIds[0], accounts[1], 1000, {
+      from: minter,
+    });
 
-    await expect(LFGNFT.setRoyalty(account1TokenIds[0], accounts[1], 2100, { from: minter }))
-      .to.be.revertedWith("NFT: Invalid royalty percentage");
+    await expect(
+      LFGNFT.setRoyalty(account1TokenIds[0], accounts[1], 2100, {
+        from: minter,
+      })
+    ).to.be.revertedWith("NFT: Invalid royalty percentage");
 
     royaltyInfo = await LFGNFT.royaltyInfo(account1TokenIds[0], 10000);
     console.log("royaltyInfo ", JSON.stringify(royaltyInfo));
@@ -51,7 +57,7 @@ describe("LFGNFT", function () {
       LFGNFT.mint(11, accounts[1], { from: minter })
     ).to.be.revertedWith("NFT: cannot mint over max batch quantity");
 
-    await LFGNFT.setMaxBatchQuantity(20, { from: accounts[0] });
+    await LFGNFT.setMaxBatchQuantity(20, { from: owner });
 
     let getMaxBatchQuantity = await LFGNFT.maxBatchQuantity();
     assert.equal(getMaxBatchQuantity.toString(), "20");
