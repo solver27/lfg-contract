@@ -49,7 +49,7 @@ contract SAMContract is SAMContractBase {
         burnAddress = _burnAddress;
         revenueAddress = _revenueAddress;
 
-        feeRate = 250; // 2.5%
+        feeRate = 125; // 1.25%
         feeBurnRate = 5000; // 50%
         royaltiesFeeRate = 1000; // Default 10% royalties fee.
     }
