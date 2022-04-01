@@ -99,7 +99,7 @@ module.exports = {
     disambiguatePaths: false,
     runOnCompile: true,
     strict: true,
-    only: ['SAMContract'],
+    only: ['SAM*'],
   },
 };
 
