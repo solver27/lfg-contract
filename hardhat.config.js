@@ -13,7 +13,7 @@ require('hardhat-contract-sizer');
 
 //if (!process.env.MNEMONICS) throw new Error("MNEMONICS missing from .env file");
 if (!process.env.MUMBAI_PRIVKEY)
-  throw new Error("RINKEBY_PRIVKEY missing from .env file");
+  throw new Error("MUMBAI_PRIVKEY missing from .env file");
 // if (!process.env.MAINNET_PRIVKEY)
 //   throw new Error("MAINNET_PRIVKEY missing from .env file");
 
