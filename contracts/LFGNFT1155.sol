@@ -19,7 +19,10 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     }
 
     // royalties
-    mapping(uint256 => RoyaltyInfo) private royalties;
+    mapping(uint256 => RoyaltyInfo) public royalties;
+
+    // collections
+    mapping(bytes => uint256[]) public collections;
 
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 2000;
@@ -92,6 +95,9 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
             _mint(_to, _id, _initialSupply, _data);
         }
         tokenSupply[_id] = _initialSupply;
+
+        // Add Id to collections.
+        collections[_data].push(_id);
         return _id;
     }
 

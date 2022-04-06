@@ -23,8 +23,9 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         bytes32 indexed listingId,
         address indexed sender,
         uint256 indexed jobId,
+        bytes collectionTag,
         SellMode sellMode,
-        uint256 _price,
+        uint256 price,
         uint256 startTime,
         uint256 duration,
         uint256 discountInterval,
@@ -39,7 +40,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
 
     event ClaimNFT(bytes32 indexed listingId, bytes32 indexed biddingId, address indexed buyer);
 
-    event MintToBuyer(address indexed buyer, uint256 indexed tokenId);
+    event MintToBuyer(address indexed buyer, uint256 indexed tokenId, bytes data);
 
     // https://eips.ethereum.org/EIPS/eip-2981
     bytes4 private constant _INTERFACE_ID_ERC2981 = 0x2a55205a;
@@ -48,6 +49,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         bytes32 id; // The listing id
         address seller; // The owner of the NFT who want to sell it
         uint256 jobId; // The job ID created from service
+        bytes collectionTag; // The collection tag
         SellMode sellMode; // The sell mode the NFT, fixed price, auction or dutch auction
         uint256 price; // In fixed price sell mode, it is the fixed price, in auction mode, it is the start price
         uint256 startTime; // The timestamp of the listing creation
@@ -95,6 +97,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
      */
     function _addListing(
         uint256 _jobId,
+        bytes calldata _collectionTag,
         SellMode _sellMode,
         uint256 _price,
         uint256 _startTime,
@@ -120,6 +123,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
             abi.encodePacked(
                 operationNonce,
                 _jobId,
+                _collectionTag,
                 _sellMode,
                 _price,
                 _startTime,
@@ -132,6 +136,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         listingRegistry[listingId].id = listingId;
         listingRegistry[listingId].seller = msg.sender;
         listingRegistry[listingId].jobId = _jobId;
+        listingRegistry[listingId].collectionTag = _collectionTag;
         listingRegistry[listingId].sellMode = _sellMode;
         listingRegistry[listingId].price = _price;
         listingRegistry[listingId].startTime = _startTime;
@@ -146,6 +151,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
             listingId,
             msg.sender,
             _jobId,
+            _collectionTag,
             _sellMode,
             _price,
             _startTime,
@@ -155,10 +161,10 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         );
     }
 
-    function _mintToBuyer(address _buyer) internal {
-        uint256 tokenId = nftContract.create(_buyer, 1, "0x0");
+    function _mintToBuyer(address _buyer, bytes memory data) internal {
+        uint256 tokenId = nftContract.create(_buyer, 1, data);
 
-        emit MintToBuyer(_buyer, tokenId);
+        emit MintToBuyer(_buyer, tokenId, data);
     }
 
     function listingOfAddr(address addr) public view returns (bytes32[] memory) {

@@ -106,6 +106,7 @@ contract SAMLazyMint is SAMLazyMintBase {
      */
     function addListing(
         uint256 _jobId,
+        bytes calldata _collectionTag,
         SellMode _sellMode,
         uint256 _price,
         uint256 _startTime,
@@ -115,6 +116,7 @@ contract SAMLazyMint is SAMLazyMintBase {
     ) external nonReentrant {
         _addListing(
             _jobId,
+            _collectionTag,
             _sellMode,
             _price,
             _startTime,
@@ -122,6 +124,35 @@ contract SAMLazyMint is SAMLazyMintBase {
             _discountInterval,
             _discountAmount
         );
+    }
+
+    /*
+     * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
+     * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
+     */
+    function addCollectionListing(
+        uint256 _jobId,
+        bytes calldata _collectionTag,
+        uint256 _collectionCount,
+        SellMode _sellMode,
+        uint256 _price,
+        uint256 _startTime,
+        uint256 _duration,
+        uint256 _discountInterval,
+        uint256 _discountAmount
+    ) external nonReentrant {
+        for (uint256 i = 0; i < _collectionCount; ++i) {
+            _addListing(
+                _jobId,
+                _collectionTag,
+                _sellMode,
+                _price,
+                _startTime,
+                _duration,
+                _discountInterval,
+                _discountAmount
+            );
+        }
     }
 
     /*
@@ -146,7 +177,7 @@ contract SAMLazyMint is SAMLazyMintBase {
 
         _transferToken(msg.sender, lst.seller, sellerAmount);
 
-        _mintToBuyer(msg.sender);
+        _mintToBuyer(msg.sender, lst.collectionTag);
 
         emit BuyNow(listingId, msg.sender, price);
 
@@ -179,7 +210,7 @@ contract SAMLazyMint is SAMLazyMintBase {
 
         _transferToken(msg.sender, lst.seller, sellerAmount);
 
-        _mintToBuyer(msg.sender);
+        _mintToBuyer(msg.sender, lst.collectionTag);
 
         emit ClaimNFT(lst.id, biddingId, msg.sender);
 
