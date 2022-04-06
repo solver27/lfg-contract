@@ -21,8 +21,8 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     // royalties
     mapping(uint256 => RoyaltyInfo) public royalties;
 
-    // collections
-    mapping(bytes => uint256[]) public collections;
+    // tokens in collection
+    mapping(bytes => uint256[]) private collectionTokens;
 
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 2000;
@@ -62,7 +62,13 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC1155, IERC165)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId) || _supportedInterfaces[interfaceId];
     }
 
@@ -97,7 +103,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         tokenSupply[_id] = _initialSupply;
 
         // Add Id to collections.
-        collections[_data].push(_id);
+        collectionTokens[_data].push(_id);
         return _id;
     }
 
@@ -186,5 +192,13 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         if (royalties[_tokenId].rate > 0 && royalties[_tokenId].receiver != address(0)) {
             royaltyAmount = (_salePrice * royalties[_tokenId].rate) / 10000;
         }
+    }
+
+    function getCollectionTokens(bytes calldata _collectionTag)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return collectionTokens[_collectionTag];
     }
 }

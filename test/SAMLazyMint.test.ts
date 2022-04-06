@@ -73,8 +73,11 @@ describe("SAMLazyMint", function () {
 
     const jobId = "1";
 
-    await SAMLazyMint.addListing(
+    const collectionTag = web3.utils.asciiToHex("CryoptKitty");
+    await SAMLazyMint.addCollectionListing(
       jobId,
+      collectionTag,
+      10, // Collection count 10
       0,
       "20000000",
       latestBlock["timestamp"] + 1,
@@ -86,7 +89,7 @@ describe("SAMLazyMint", function () {
 
     let listingResult = await SAMLazyMint.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
-    assert.equal(listingResult.length, 1);
+    assert.equal(listingResult.length, 10);
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
@@ -130,11 +133,14 @@ describe("SAMLazyMint", function () {
     assert.equal(balanceOfAccount2.toString(), "20000000");
 
     listingResult = await SAMLazyMint.listingOfAddr(accounts[2]);
-    assert.equal(listingResult.length, 0);
+    assert.equal(listingResult.length, 9);
 
     let burnAmount = await LFGToken.balanceOf(burnAddress);
     console.log("Burn amount ", burnAmount.toString());
     assert.equal(burnAmount.toString(), "250000");
+
+    let collectionTokens = await LFGNFT1155.getCollectionTokens(collectionTag);
+    console.log("collection tokens ", collectionTokens.toString());
   });
 
   // it("test auction and bidding", async function () {

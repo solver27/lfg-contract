@@ -177,7 +177,7 @@ contract SAMLazyMint is SAMLazyMintBase {
 
         _transferToken(msg.sender, lst.seller, sellerAmount);
 
-        _mintToBuyer(msg.sender, lst.collectionTag);
+        _mintToBuyer(msg.sender, lst.tokenId, lst.collectionTag);
 
         emit BuyNow(listingId, msg.sender, price);
 
@@ -210,7 +210,7 @@ contract SAMLazyMint is SAMLazyMintBase {
 
         _transferToken(msg.sender, lst.seller, sellerAmount);
 
-        _mintToBuyer(msg.sender, lst.collectionTag);
+        _mintToBuyer(msg.sender, lst.tokenId, lst.collectionTag);
 
         emit ClaimNFT(lst.id, biddingId, msg.sender);
 

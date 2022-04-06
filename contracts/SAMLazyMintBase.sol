@@ -24,6 +24,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         address indexed sender,
         uint256 indexed jobId,
         bytes collectionTag,
+        uint256 tokenId,
         SellMode sellMode,
         uint256 price,
         uint256 startTime,
@@ -50,6 +51,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         address seller; // The owner of the NFT who want to sell it
         uint256 jobId; // The job ID created from service
         bytes collectionTag; // The collection tag
+        uint256 tokenId;
         SellMode sellMode; // The sell mode the NFT, fixed price, auction or dutch auction
         uint256 price; // In fixed price sell mode, it is the fixed price, in auction mode, it is the start price
         uint256 startTime; // The timestamp of the listing creation
@@ -119,11 +121,15 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
             require(_price > discount, "Start price lower than total discount");
         }
 
+        // create the token, but not mint it
+        uint256 tokenId = nftContract.create(address(this), 0, _collectionTag);
+
         bytes32 listingId = keccak256(
             abi.encodePacked(
                 operationNonce,
                 _jobId,
                 _collectionTag,
+                tokenId,
                 _sellMode,
                 _price,
                 _startTime,
@@ -137,6 +143,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         listingRegistry[listingId].seller = msg.sender;
         listingRegistry[listingId].jobId = _jobId;
         listingRegistry[listingId].collectionTag = _collectionTag;
+        listingRegistry[listingId].tokenId = tokenId;
         listingRegistry[listingId].sellMode = _sellMode;
         listingRegistry[listingId].price = _price;
         listingRegistry[listingId].startTime = _startTime;
@@ -152,6 +159,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
             msg.sender,
             _jobId,
             _collectionTag,
+            tokenId,
             _sellMode,
             _price,
             _startTime,
@@ -161,8 +169,8 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         );
     }
 
-    function _mintToBuyer(address _buyer, bytes memory data) internal {
-        uint256 tokenId = nftContract.create(_buyer, 1, data);
+    function _mintToBuyer(address _buyer, uint256 tokenId, bytes memory data) internal {
+        nftContract.mint(_buyer, tokenId, 1, data);
 
         emit MintToBuyer(_buyer, tokenId, data);
     }
