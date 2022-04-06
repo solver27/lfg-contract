@@ -12,15 +12,20 @@ describe("LFGNFT1155", function () {
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], accounts[2], accounts[3], owner] = await web3.eth.getAccounts();
+      [accounts[0], accounts[1], accounts[2], accounts[3], owner] =
+        await web3.eth.getAccounts();
       LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
+
+      await LFGNFT1155.setCreatorWhitelist(accounts[1], true, { from: owner });
     } catch (err) {
       console.log(err);
     }
   });
 
   it("test NFT 1155 mint", async function () {
-    let result = await LFGNFT1155.create(accounts[1], 10, "0x0", { from: accounts[1] });
+    let result = await LFGNFT1155.create(accounts[1], 10, "0x0", {
+      from: accounts[1],
+    });
     console.log(JSON.stringify(result));
     let id = result["logs"][0]["args"]["id"];
     console.log("id: ", id.toString());
@@ -37,7 +42,9 @@ describe("LFGNFT1155", function () {
     const token1Supply = await LFGNFT1155.tokenSupply(id);
     assert.equal(token1Supply.toString(), "20");
 
-    await LFGNFT1155.safeTransferFrom(accounts[2], accounts[3], id, 5, "0x0", { from: accounts[2] });
+    await LFGNFT1155.safeTransferFrom(accounts[2], accounts[3], id, 5, "0x0", {
+      from: accounts[2],
+    });
 
     nftBalance2 = await LFGNFT1155.balanceOf(accounts[2], id);
     console.log("nftBalance of account 2 ", nftBalance2.toString());
@@ -61,7 +68,7 @@ describe("LFGNFT1155", function () {
       LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: owner })
     ).to.be.revertedWith("NFT: Invalid creator");
 
-    await LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: accounts[1] })
+    await LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: accounts[1] });
 
     royaltyInfo = await LFGNFT1155.royaltyInfo(id, 10000);
     console.log("royaltyInfo ", JSON.stringify(royaltyInfo));

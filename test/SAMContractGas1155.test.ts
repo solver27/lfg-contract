@@ -24,7 +24,7 @@ describe("SAMContractGas1155", function () {
   let NftWhiteList = null;
   let SAMContractGas = null;
   let accounts = ["", "", "", "", "", "", ""],
-    minter,
+    owner,
     revenueAddress;
 
   before("Deploy contract", async function () {
@@ -37,26 +37,28 @@ describe("SAMContractGas1155", function () {
         accounts[4],
         accounts[5],
         accounts[6],
-        minter,
+        owner,
         revenueAddress,
       ] = await web3.eth.getAccounts();
 
-      LFGNFT1155 = await LFGNFT1155Art.new(minter, "");
+      LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
 
-      NftWhiteList = await NftWhiteListArt.new(minter);
+      await LFGNFT1155.setCreatorWhitelist(accounts[2], true, { from: owner });
+
+      NftWhiteList = await NftWhiteListArt.new(owner);
 
       SAMContractGas = await SAMContractGasArt.new(
-        minter,
+        owner,
         NftWhiteList.address
       );
 
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT1155.address, true, {
-        from: minter,
+        from: owner,
       });
 
       // 2.5% fee, 10% royalties fee.
-      await SAMContractGas.updateFeeRate(250, 1000, { from: minter });
+      await SAMContractGas.updateFeeRate(250, 1000, { from: owner });
     } catch (err) {
       console.log(err);
     }
@@ -152,7 +154,7 @@ describe("SAMContractGas1155", function () {
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.isAbove(
       parseInt(balanceOfAccount2.toString()),
-      10001999057036928800000
+      10001899057036928800000
     );
 
     account2Tokens = await SAMContractGas.addrTokens(accounts[2]);

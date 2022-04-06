@@ -16,7 +16,7 @@ describe("SAMContract1155", function () {
   let SAMContract = null;
   let BurnToken = null;
   let accounts = ["", "", "", "", "", "", ""],
-    minter,
+    owner,
     burnAddress,
     revenueAddress,
     burnAddress1;
@@ -31,7 +31,7 @@ describe("SAMContract1155", function () {
         accounts[4],
         accounts[5],
         accounts[6],
-        minter,
+        owner,
         burnAddress,
         revenueAddress,
         burnAddress1,
@@ -40,15 +40,17 @@ describe("SAMContract1155", function () {
         "LFG Token",
         "LFG",
         "1000000000000000000000000000",
-        minter
+        owner
       );
 
-      LFGNFT1155 = await LFGNFT1155Art.new(minter, "");
+      LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
 
-      NftWhiteList = await NftWhiteListArt.new(minter);
+      await LFGNFT1155.setCreatorWhitelist(accounts[2], true, { from: owner });
+
+      NftWhiteList = await NftWhiteListArt.new(owner);
 
       SAMContract = await SAMContractArt.new(
-        minter,
+        owner,
         LFGToken.address,
         NftWhiteList.address,
         burnAddress,
@@ -57,19 +59,19 @@ describe("SAMContract1155", function () {
 
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT1155.address, true, {
-        from: minter,
+        from: owner,
       });
 
       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
-      await SAMContract.updateFeeRate(250, 1000, { from: minter });
-      await SAMContract.updateBurnFeeRate(5000, { from: minter });
+      await SAMContract.updateFeeRate(250, 1000, { from: owner });
+      await SAMContract.updateBurnFeeRate(5000, { from: owner });
 
       BurnToken = await BurnTokenArt.new(
-        minter,
+        owner,
         LFGToken.address,
         burnAddress1
       );
-      await BurnToken.setOperator(SAMContract.address, true, { from: minter });
+      await BurnToken.setOperator(SAMContract.address, true, { from: owner });
     } catch (err) {
       console.log(err);
     }
@@ -127,7 +129,7 @@ describe("SAMContract1155", function () {
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount, { from: minter });
+    await LFGToken.transfer(accounts[1], testDepositAmount, { from: owner });
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());

@@ -7,6 +7,9 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
 contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
+    event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
+    event SetCreatorWhitelist(address indexed creator, bool isWhitelist);
+
     uint256 private _currentTokenID = 0;
     mapping(uint256 => address) public creators;
 
@@ -24,10 +27,10 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     // tokens in collection
     mapping(bytes => uint256[]) private collectionTokens;
 
+    mapping(address => bool) public creatorWhiteLists;
+
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 2000;
-
-    event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
 
     /**
      * @dev Mapping of interface ids to whether or not it's supported.
@@ -93,6 +96,8 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256 _initialSupply,
         bytes calldata _data
     ) external returns (uint256) {
+        require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
+
         uint256 _id = _getNextTokenID();
         _incrementTokenTypeId();
         creators[_id] = msg.sender;
@@ -200,5 +205,12 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         returns (uint256[] memory)
     {
         return collectionTokens[_collectionTag];
+    }
+
+    function setCreatorWhitelist(address _addr, bool _isWhitelist) external onlyOwner {
+
+        creatorWhiteLists[_addr] = _isWhitelist;
+
+        emit SetCreatorWhitelist(_addr, _isWhitelist);
     }
 }
