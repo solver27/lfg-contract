@@ -88,7 +88,9 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         _incrementTokenTypeId();
         creators[_id] = msg.sender;
 
-        _mint(_to, _id, _initialSupply, _data);
+        if (_initialSupply > 0) {
+            _mint(_to, _id, _initialSupply, _data);
+        }
         tokenSupply[_id] = _initialSupply;
         return _id;
     }
@@ -106,6 +108,8 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256 _quantity,
         bytes memory _data
     ) public creatorOnly(_id) {
+        require(_id > 0, "Invalid token id");
+        require(_quantity > 0, "Invalid quantity");
         _mint(_to, _id, _quantity, _data);
         tokenSupply[_id] += _quantity;
     }
