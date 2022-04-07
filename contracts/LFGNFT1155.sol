@@ -5,8 +5,11 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
+    using Strings for uint256;
+
     event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
     event SetCreatorWhitelist(address indexed creator, bool isWhitelist);
 
@@ -199,6 +202,10 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         }
     }
 
+    /**
+     * @dev get the tokens of a collection
+     * @return uint256[] array of token ID
+     */
     function getCollectionTokens(bytes calldata _collectionTag)
         external
         view
@@ -208,9 +215,21 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     }
 
     function setCreatorWhitelist(address _addr, bool _isWhitelist) external onlyOwner {
-
         creatorWhiteLists[_addr] = _isWhitelist;
 
         emit SetCreatorWhitelist(_addr, _isWhitelist);
+    }
+
+    function uri(uint256 _id) public view virtual override returns (string memory) {
+        require(_exists(_id), "ERC1155Metadata: URI query for nonexistent token");
+        string memory currentBaseURI = ERC1155.uri(_id);
+        return
+            bytes(currentBaseURI).length > 0
+                ? string(abi.encodePacked(currentBaseURI, _id.toString()))
+                : "";
+    }
+
+    function _exists(uint256 _tokenId) internal view returns (bool) {
+        return creators[_tokenId] != address(0);
     }
 }

@@ -10,11 +10,14 @@ describe("LFGNFT1155", function () {
   let accounts = ["", "", "", ""],
     owner;
 
+  const baseURI =
+    "https://gateway.pinata.cloud/ipfs/QmWNPuFyQLa2EjGPVAhA8veFc6yuTwNVEeGRgkCKk4NW5Q/";
+
   before("Deploy contract", async function () {
     try {
       [accounts[0], accounts[1], accounts[2], accounts[3], owner] =
         await web3.eth.getAccounts();
-      LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
+      LFGNFT1155 = await LFGNFT1155Art.new(owner, baseURI);
 
       await LFGNFT1155.setCreatorWhitelist(accounts[1], true, { from: owner });
     } catch (err) {
@@ -29,6 +32,10 @@ describe("LFGNFT1155", function () {
     console.log(JSON.stringify(result));
     let id = result["logs"][0]["args"]["id"];
     console.log("id: ", id.toString());
+  
+    let tokenUri = await LFGNFT1155.uri(id);
+    console.log("Token 1 uri: ", tokenUri);
+    assert.equal(tokenUri, baseURI + "1");
 
     const nftBalance1 = await LFGNFT1155.balanceOf(accounts[1], id);
     console.log("nftBalance of account 1 ", nftBalance1.toString());
