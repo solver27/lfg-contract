@@ -3,13 +3,16 @@ import "@nomiclabs/hardhat-ethers";
 import { Contract, ContractFactory } from "ethers";
 import { ethers } from "hardhat"; // Optional (for `node <script>`)
 
+if (!process.env.MULTISIG_PUBKEY)
+  throw new Error("MULTISIG_PUBKEY missing from .env file");
+
 async function deploy() {
   // Nft whitelist contract
   const NftWhiteList: ContractFactory = await ethers.getContractFactory(
     "NftWhiteList"
   );
   const nftWhiteList: Contract = await NftWhiteList.deploy(
-    "0x3ca3822163D049364E67bE19a0D3B2F03B7e99b5"
+    process.env.MULTISIG_PUBKEY
   );
   await nftWhiteList.deployed();
   console.log("NftWhiteList deployed to: ", nftWhiteList.address);
@@ -20,7 +23,7 @@ async function deploy() {
   );
 
   const samContract: Contract = await SAMContract.deploy(
-    "0x3ca3822163D049364E67bE19a0D3B2F03B7e99b5", // owner address
+    process.env.MULTISIG_PUBKEY, // owner address
     "0x53c54E27DEc0Fa40ac02B032c6766Ce8E04A2A70", // lfgToken.address
     nftWhiteList.address, // Whitelist contract
     "0xf197c5bC13383ef49511303065d39b33DC063f72", // burn address
@@ -36,8 +39,8 @@ async function deploy() {
   );
 
   const samContractGas: Contract = await SAMContractGas.deploy(
-    "0x3ca3822163D049364E67bE19a0D3B2F03B7e99b5", // owner address
-    "0xBC289f68248411754915E69a8a3d51599b857a8F" // White List contract
+    process.env.MULTISIG_PUBKEY, // owner address
+    nftWhiteList.address, // White List contract
   );
 
   await samContractGas.deployed();

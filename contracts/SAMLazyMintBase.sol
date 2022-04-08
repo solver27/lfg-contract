@@ -122,7 +122,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         }
 
         // create the token, but not mint it
-        uint256 tokenId = nftContract.create(address(this), 0, _collectionTag);
+        uint256 tokenId = nftContract.create(msg.sender, 0, _collectionTag);
 
         bytes32 listingId = keccak256(
             abi.encodePacked(

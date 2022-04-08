@@ -3,6 +3,9 @@ import "@nomiclabs/hardhat-ethers";
 import { Contract, ContractFactory } from "ethers";
 import { ethers } from "hardhat"; // Optional (for `node <script>`)
 
+if (!process.env.MULTISIG_PUBKEY)
+  throw new Error("MULTISIG_PUBKEY missing from .env file");
+
 async function deploy() {
   // LFG token contract
   const LFGToken: ContractFactory = await ethers.getContractFactory("LFGToken");
@@ -17,7 +20,7 @@ async function deploy() {
 
   // LFGNFT contract
   const LFGNFT: ContractFactory = await ethers.getContractFactory("LFGNFT");
-  const lfgNft: Contract = await LFGNFT.deploy();
+  const lfgNft: Contract = await LFGNFT.deploy(process.env.MULTISIG_PUBKEY);
   await lfgNft.deployed();
   console.log("LFGNFT deployed to: ", lfgNft.address);
 
@@ -26,7 +29,7 @@ async function deploy() {
     "LFGNFT1155"
   );
   const lfgNft1155: Contract = await LFGNFT1155.deploy(
-    "0x3ca3822163D049364E67bE19a0D3B2F03B7e99b5",
+    process.env.MULTISIG_PUBKEY,
     ""
   );
   await lfgNft1155.deployed();

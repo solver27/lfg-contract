@@ -27,8 +27,13 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     // royalties
     mapping(uint256 => RoyaltyInfo) public royalties;
 
+    struct Collection {
+        address initiator;
+        uint256[] ids;
+    }
+
     // tokens in collection
-    mapping(bytes => uint256[]) private collectionTokens;
+    mapping(bytes => Collection) public collections;
 
     mapping(address => bool) public creatorWhiteLists;
 
@@ -100,6 +105,12 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         bytes calldata _data
     ) external returns (uint256) {
         require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
+        // If the collection already exists, then only the same user can add to the collection.
+        if (collections[_data].ids.length > 0) {
+            require(_to == collections[_data].initiator, "Only the same user can add to collection");
+        }else {
+            collections[_data].initiator = _to;
+        }
 
         uint256 _id = _getNextTokenID();
         _incrementTokenTypeId();
@@ -111,8 +122,42 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         tokenSupply[_id] = _initialSupply;
 
         // Add Id to collections.
-        collectionTokens[_data].push(_id);
+        collections[_data].ids.push(_id);
         return _id;
+    }
+
+    function createBatch(
+        address _to,
+        uint256 _quantity,
+        uint256 _initialSupply,
+        bytes calldata _data
+    ) external returns (uint256[] memory) {
+        require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
+        require(_quantity > 0, "Invalid quantity");
+
+        // If the collection already exists, then only the same user can add to the collection.
+        if (collections[_data].ids.length > 0) {
+            require(_to == collections[_data].initiator, "Only the same user can add to collection");
+        }else {
+            collections[_data].initiator = _to;
+        }
+
+        uint256[] memory ids = new uint256[](_quantity);
+        for (uint256 i = 0; i < _quantity; i++) {
+            uint256 _id = _getNextTokenID();
+            _incrementTokenTypeId();
+            creators[_id] = msg.sender;
+
+            if (_initialSupply > 0) {
+                _mint(_to, _id, _initialSupply, _data);
+            }
+            tokenSupply[_id] = _initialSupply;
+
+            // Add Id to collections.
+            collections[_data].ids.push(_id);
+            ids[i] = _id;
+        }
+        return ids;
     }
 
     /**
@@ -211,7 +256,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         view
         returns (uint256[] memory)
     {
-        return collectionTokens[_collectionTag];
+        return collections[_collectionTag].ids;
     }
 
     function setCreatorWhitelist(address _addr, bool _isWhitelist) external onlyOwner {
