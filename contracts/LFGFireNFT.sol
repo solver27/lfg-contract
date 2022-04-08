@@ -38,6 +38,16 @@ contract LFGFireNFT is ILFGNFT, ERC721Enumerable, Ownable {
         }
     }
 
+    function multiMint(address[] calldata _wallets) external onlyOwner {
+        require(_wallets.length > 0, "Input address list is empty");
+        require(totalSupply() + _wallets.length <= MAX_SUPPLY, "NFT: max supply reached");
+
+        for (uint256 i = 0; i < _wallets.length; i++) {
+            require(_wallets[i] != address(0), "NFT: invalid address");
+            _safeMint(_wallets[i], totalSupply() + 1);
+        }
+    }
+
     function adminMint(uint256 _qty, address _to) external onlyOwner {
         require(_qty != 0, "NFT: minitum 1 nft");
         require(_to != address(0), "NFT: invalid address");
@@ -55,17 +65,8 @@ contract LFGFireNFT is ILFGNFT, ERC721Enumerable, Ownable {
         return baseURI;
     }
 
-    function tokenURI(uint256 _id)
-        public
-        view
-        virtual
-        override
-        returns (string memory)
-    {
-        require(
-            _exists(_id),
-            "ERC721Metadata: URI query for nonexistent token"
-        );
+    function tokenURI(uint256 _id) public view virtual override returns (string memory) {
+        require(_exists(_id), "ERC721Metadata: URI query for nonexistent token");
         string memory currentBaseURI = _baseURI();
         return
             bytes(currentBaseURI).length > 0
@@ -73,11 +74,7 @@ contract LFGFireNFT is ILFGNFT, ERC721Enumerable, Ownable {
                 : "";
     }
 
-    function tokensOfOwner(address _owner)
-        public
-        view
-        returns (uint256[] memory)
-    {
+    function tokensOfOwner(address _owner) public view returns (uint256[] memory) {
         uint256 balance = balanceOf(_owner);
         uint256[] memory ids = new uint256[](balance);
         for (uint256 i = 0; i < balance; i++) {
