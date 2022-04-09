@@ -107,9 +107,9 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
         // If the collection already exists, then only the same user can add to the collection.
         if (collections[_data].ids.length > 0) {
-            require(_to == collections[_data].initiator, "Only the same user can add to collection");
+            require(tx.origin == collections[_data].initiator, "Only the same user can add to collection");
         }else {
-            collections[_data].initiator = _to;
+            collections[_data].initiator = tx.origin;
         }
 
         uint256 _id = _getNextTokenID();
@@ -137,9 +137,9 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
 
         // If the collection already exists, then only the same user can add to the collection.
         if (collections[_data].ids.length > 0) {
-            require(_to == collections[_data].initiator, "Only the same user can add to collection");
+            require(tx.origin == collections[_data].initiator, "Only the same user can add to collection");
         }else {
-            collections[_data].initiator = _to;
+            collections[_data].initiator = tx.origin;
         }
 
         uint256[] memory ids = new uint256[](_quantity);
