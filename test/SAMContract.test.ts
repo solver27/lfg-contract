@@ -1,3 +1,4 @@
+const { BigNumber } = require("bignumber.js");
 const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
@@ -195,7 +196,9 @@ describe("SAMContract", function () {
 
     const testDepositAmount = "100000000000000000000000";
     for (let accountId = 3; accountId < 6; ++accountId) {
-      await LFGToken.transfer(accounts[accountId], testDepositAmount, { from: minter });
+      await LFGToken.transfer(accounts[accountId], testDepositAmount, {
+        from: minter,
+      });
       await LFGToken.approve(SAMContract.address, testDepositAmount, {
         from: accounts[accountId],
       }); // to charge fees
@@ -209,7 +212,13 @@ describe("SAMContract", function () {
       SAMContract.placeBid(listingId, "11000000", { from: accounts[2] })
     ).to.be.revertedWith("Bidder cannot be seller");
 
+    const acc3BalanceBeforeBid = await LFGToken.balanceOf(accounts[3]);
+
     await SAMContract.placeBid(listingId, "11000000", { from: accounts[3] });
+
+    const acc3BalanceAfterBid = await LFGToken.balanceOf(accounts[3]);
+    // Verify the amount is deducted
+    assert.equal(acc3BalanceAfterBid.toString(), "99999999999999989000000");
 
     await expect(
       SAMContract.placeBid(listingId, "11000000", { from: accounts[4] })
@@ -219,10 +228,21 @@ describe("SAMContract", function () {
     await SAMContract.placeBid(listingId, "15000000", { from: accounts[5] });
 
     const biddings = await SAMContract.biddingOfAddr(accounts[3]);
-    console.log("Biddings of address: ", JSON.stringify(biddings));
+    // Because the bidding was removed if other bidding with higher price
+    assert.equal(biddings.length, 0);
+
+    const acc3BalanceAfterOverTakeBid = await LFGToken.balanceOf(accounts[3]);
+    // account 3 should has been fefunded and its balance goes back to original balance
+    assert.equal(
+      acc3BalanceBeforeBid.toString(),
+      acc3BalanceAfterOverTakeBid.toString()
+    );
+    assert.equal(acc3BalanceAfterOverTakeBid.toString(), testDepositAmount);
+
+    const biddingsOfAddr5 = await SAMContract.biddingOfAddr(accounts[5]);
 
     await expect(
-      SAMContract.claimNft(biddings[0], { from: accounts[3] })
+      SAMContract.claimNft(biddingsOfAddr5[0], { from: accounts[5] })
     ).to.be.revertedWith("The bidding period haven't complete");
 
     const today = Math.round(new Date() / 1000);
@@ -232,10 +252,8 @@ describe("SAMContract", function () {
     await hre.network.provider.send("evm_mine");
 
     await expect(
-      SAMContract.claimNft(biddings[0], { from: accounts[3] })
-    ).to.be.revertedWith("The bidding is not the highest price");
-
-    const biddingsOfAddr5 = await SAMContract.biddingOfAddr(accounts[5]);
+      SAMContract.claimNft(biddingsOfAddr5[0], { from: accounts[3] })
+    ).to.be.revertedWith("Only bidder can claim NFT");
 
     await SAMContract.claimNft(biddingsOfAddr5[0], { from: accounts[5] });
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
@@ -281,7 +299,7 @@ describe("SAMContract", function () {
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[0],
-      1,
+      1, // Auction
       "10000000",
       latestBlock["timestamp"] + 1,
       3600 * 24,
@@ -291,9 +309,11 @@ describe("SAMContract", function () {
     );
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
-    console.log("getListingResult ", JSON.stringify(listingResult));
+    console.log("getListingResult for remove ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
     let listingId = listingResult[0];
+    const lstDetail = await SAMContract.listingRegistry(listingId);
+    console.log("listing detail ", lstDetail);
 
     await expect(
       SAMContract.removeListing(listingId, { from: accounts[2] })
@@ -479,7 +499,9 @@ describe("SAMContract", function () {
 
   it("test burn token when fire NFT was sold", async function () {
     // Top up burn contract
-    await LFGToken.transfer(BurnToken.address, "100000000000000000000000", { from: minter });
+    await LFGToken.transfer(BurnToken.address, "100000000000000000000000", {
+      from: minter,
+    });
     await BurnToken.setBurnRate(1000, { from: minter });
     await SAMContract.setFireNftContract(LFGFireNFT.address, { from: minter });
     await SAMContract.setBurnTokenContract(BurnToken.address, { from: minter });
