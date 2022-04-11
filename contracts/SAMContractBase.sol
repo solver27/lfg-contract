@@ -144,8 +144,12 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
             nftWhiteListContract.isWhiteListed(_hostContract),
             "The NFT hosting contract is not in whitelist"
         );
-        require(_startTime >= block.timestamp, "Listing auction start time past already");
-        require(_duration > 0, "Invalid duration");
+
+        // Fixed price no need to check start time and duration.
+        if (_sellMode != SellMode.FixedPrice) {
+            require(_startTime >= block.timestamp, "Listing auction start time past already");
+            require(_duration > 0, "Invalid duration");
+        }
 
         if (_sellMode == SellMode.FixedPrice) {
             require(_price > 0, "Invalid fixed price");
@@ -154,8 +158,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         } else if (_sellMode == SellMode.DutchAuction) {
             require(_discountInterval > 0, "Invalid discount interval");
             require(_discountAmount > 0, "Invalid discount amount");
-            uint256 discount = (_discountAmount * _duration) / _discountInterval;
-            require(_price > discount, "Start price lower than total discount");
+            require(
+                _price > (_discountAmount * _duration) / _discountInterval,
+                "Start price lower than total discount"
+            );
         }
 
         bytes32 listingId = keccak256(abi.encodePacked(operationNonce, _hostContract, _tokenId));
@@ -267,7 +273,11 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
      */
     function removeListing(bytes32 listingId) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
-        require(lst.startTime + lst.duration < block.timestamp, "The listing haven't expired");
+        // For fixed price sell, there is no duration limit,
+        // so user should be remove it any time before it is sold.
+        if (lst.sellMode != SellMode.FixedPrice) {
+            require(lst.startTime + lst.duration < block.timestamp, "The listing haven't expired");
+        }
         require(lst.seller == msg.sender, "Only seller can remove");
         require(lst.biddingId == 0, "Already received bidding, cannot close");
 
