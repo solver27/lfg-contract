@@ -333,6 +333,9 @@ describe("SAMContract", function () {
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 0);
+
+    account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
   });
 
   it("test dutch auction ", async function () {
@@ -473,7 +476,7 @@ describe("SAMContract", function () {
     assert.equal(account1TokenIds[0], "1");
 
     account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
-    console.log("tokenIds of account0 ", JSON.stringify(account2TokenIds));
+    console.log("tokenIds of account 2 ", JSON.stringify(account2TokenIds));
     assert.equal(account2TokenIds[0], "3");
 
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
@@ -576,5 +579,42 @@ describe("SAMContract", function () {
     // Check the burn amount
     let totalBurnAmount = await BurnToken.totalBurnAmount();
     assert.equal(totalBurnAmount.toString(), "2000000");
+  });
+
+  it("test remove listing for fixed price ", async function () {
+    let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
+
+    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], {
+      from: accounts[2],
+    });
+
+    await SAMContract.addListing(
+      LFGNFT.address,
+      account2TokenIds[0],
+      0, // fixed price
+      "10000000",
+      0, // The start time no use
+      0, // Duration
+      0, // _discountInterval
+      0, // _discountAmount
+      { from: accounts[2] }
+    );
+
+    let listingResult = await SAMContract.listingOfAddr(accounts[2]);
+    console.log("getListingResult for remove ", JSON.stringify(listingResult));
+    assert.equal(listingResult.length, 1);
+    let listingId = listingResult[0];
+    const lstDetail = await SAMContract.listingRegistry(listingId);
+    console.log("listing detail ", lstDetail);
+
+    await expect(
+      SAMContract.removeListing(listingId, { from: accounts[1] })
+    ).to.be.revertedWith("Only seller can remove");
+
+    await SAMContract.removeListing(listingId, { from: accounts[2] });
+    listingResult = await SAMContract.listingOfAddr(accounts[2]);
+    console.log("getListingResult ", JSON.stringify(listingResult));
+    assert.equal(listingResult.length, 0);
   });
 });

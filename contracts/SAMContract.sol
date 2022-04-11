@@ -179,8 +179,11 @@ contract SAMContract is SAMContractBase {
     function buyNow(bytes32 listingId) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
         require(lst.sellMode != SellMode.Auction, "Auction not support buy now");
-        require(block.timestamp >= lst.startTime, "The auction haven't start");
-        require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
+        // Only check for dutch auction, for fixed price there is no duration
+        if (lst.sellMode == SellMode.DutchAuction) {
+            require(block.timestamp >= lst.startTime, "The auction haven't start");
+            require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
+        }
         require(msg.sender != lst.seller, "Buyer cannot be seller");
 
         uint256 price = getPrice(listingId);
