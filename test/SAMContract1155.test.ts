@@ -114,8 +114,14 @@ describe("SAMContract1155", function () {
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
 
-    let balanceOfMarketplace  = await LFGNFT1155.balanceOf(SAMContract.address, id);
-    console.log("balance of of market place ", JSON.stringify(balanceOfMarketplace));
+    let balanceOfMarketplace = await LFGNFT1155.balanceOf(
+      SAMContract.address,
+      id
+    );
+    console.log(
+      "balance of of market place ",
+      JSON.stringify(balanceOfMarketplace)
+    );
     assert.equal(balanceOfMarketplace.toString(), "1");
 
     let listingId = listingResult[0];
@@ -140,8 +146,11 @@ describe("SAMContract1155", function () {
 
     await SAMContract.buyNow(listingId, { from: accounts[1] });
 
-    let nftBalanceOfAccount1  = await LFGNFT1155.balanceOf(accounts[1], id);
-    console.log("balance of of account 1 ", JSON.stringify(nftBalanceOfAccount1));
+    let nftBalanceOfAccount1 = await LFGNFT1155.balanceOf(accounts[1], id);
+    console.log(
+      "balance of of account 1 ",
+      JSON.stringify(nftBalanceOfAccount1)
+    );
     assert.equal(nftBalanceOfAccount1, "1");
 
     nftBalanceOfAccount2 = await LFGNFT1155.balanceOf(accounts[2], id);

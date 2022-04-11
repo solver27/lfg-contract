@@ -104,25 +104,34 @@ contract SAMContract is SAMContractBase {
     function placeBid(bytes32 listingId, uint256 price) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
         require(lst.sellMode == SellMode.Auction, "Can only bid for listing on auction");
-        require(block.timestamp >= lst.startTime, "The auction haven't start");
+        require(block.timestamp >= lst.startTime, "The auction hasn't started yet");
         require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
         require(msg.sender != lst.seller, "Bidder cannot be seller");
 
         uint256 minPrice = lst.price;
-        // The last element is the current highest price
-        if (lst.biddingIds.length > 0) {
-            bytes32 lastBiddingId = lst.biddingIds[lst.biddingIds.length - 1];
-            minPrice = biddingRegistry[lastBiddingId].price;
+
+        if (lst.biddingId != 0) {
+            minPrice = biddingRegistry[lst.biddingId].price;
         }
 
         require(price > minPrice, "Bid price too low");
+
+        // this is a lower price bid before, need to return Token back to the buyer
+        if (lst.biddingId != 0) {
+            _transferToken(
+                biddingRegistry[lst.biddingId].bidder,
+                biddingRegistry[lst.biddingId].bidder,
+                biddingRegistry[lst.biddingId].price
+            );
+            _removeBidding(lst.biddingId, biddingRegistry[lst.biddingId].bidder);
+        }
 
         _depositToken(msg.sender, price);
 
         bytes32 biddingId = keccak256(
             abi.encodePacked(operationNonce, lst.hostContract, lst.tokenId)
         );
-        biddingRegistry[biddingId].id = biddingId;
+
         biddingRegistry[biddingId].bidder = msg.sender;
         biddingRegistry[biddingId].listingId = listingId;
         biddingRegistry[biddingId].price = price;
@@ -130,7 +139,7 @@ contract SAMContract is SAMContractBase {
 
         operationNonce++;
 
-        lst.biddingIds.push(biddingId);
+        lst.biddingId = biddingId;
 
         addrBiddingIds[msg.sender].push(biddingId);
 
@@ -187,7 +196,7 @@ contract SAMContract is SAMContractBase {
         }
 
         _transferToken(msg.sender, lst.seller, sellerAmount);
-        _transferNft(listingId, msg.sender, lst.hostContract, lst.tokenId);
+        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         if (lst.hostContract == fireNftContractAddress) {
             _burnTokenOnFireNft(price);
@@ -211,15 +220,9 @@ contract SAMContract is SAMContractBase {
             lst.startTime + lst.duration < block.timestamp,
             "The bidding period haven't complete"
         );
-        for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
-            bytes32 tmpId = lst.biddingIds[i];
-            if (biddingRegistry[tmpId].price > bid.price) {
-                require(false, "The bidding is not the highest price");
-            }
-        }
 
         _processFee(msg.sender, bid.price);
-        _transferNft(lst.id, msg.sender, lst.hostContract, lst.tokenId);
+        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         uint256 sellerAmount = bid.price;
         if (_checkRoyalties(lst.hostContract)) {
@@ -232,21 +235,9 @@ contract SAMContract is SAMContractBase {
             _burnTokenOnFireNft(bid.price);
         }
 
-        emit ClaimNFT(lst.id, biddingId, msg.sender);
+        emit ClaimNFT(bid.listingId, biddingId, msg.sender);
 
-        // Refund the failed bidder
-        for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
-            bytes32 tmpId = lst.biddingIds[i];
-            if (tmpId != biddingId) {
-                _transferToken(
-                    biddingRegistry[tmpId].bidder,
-                    biddingRegistry[tmpId].bidder,
-                    biddingRegistry[tmpId].price
-                );
-            }
-        }
-
-        _removeListing(lst.id, lst.seller);
+        _removeListing(bid.listingId, lst.seller);
     }
 
     function _processFee(address buyer, uint256 price) internal {
@@ -256,7 +247,7 @@ contract SAMContract is SAMContractBase {
         SafeERC20.safeTransferFrom(lfgToken, buyer, revenueAddress, revenue);
         revenueAmount += revenue;
 
-        SafeERC20.safeTransferFrom(lfgToken,buyer, burnAddress, feeToBurn);
+        SafeERC20.safeTransferFrom(lfgToken, buyer, burnAddress, feeToBurn);
         totalBurnAmount += feeToBurn;
     }
 

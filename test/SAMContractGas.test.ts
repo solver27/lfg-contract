@@ -13,7 +13,8 @@ async function getBiddingOfAddr(samContract, addr) {
   let results = new Array();
   for (let index in biddingIds) {
     const biddingId = biddingIds[index];
-    const biddingInfo = await samContract.biddingRegistry(biddingId);
+    let biddingInfo = await samContract.biddingRegistry(biddingId);
+    biddingInfo["id"] = biddingId;
     results.push(biddingInfo);
   }
   console.log("getBiddingOfAddr result: ", JSON.stringify(results));
@@ -40,7 +41,7 @@ describe("SAMContractGas", function () {
         accounts[5],
         accounts[6],
         minter,
-        revenueAddress
+        revenueAddress,
       ] = await web3.eth.getAccounts();
 
       LFGNFT = await LFGNFTArt.new(minter);
@@ -211,6 +212,13 @@ describe("SAMContractGas", function () {
       value: "1150000000000000000",
     });
 
+    let account4Tokens = await SAMContractGas.addrTokens(accounts[4]);
+    console.log(
+      "Escrow tokens of account 4 before place bid",
+      JSON.stringify(account4Tokens)
+    );
+    assert.equal(account4Tokens["claimableAmount"], "0");
+
     await expect(
       SAMContractGas.placeBid(listingId, {
         from: accounts[4],
@@ -222,10 +230,27 @@ describe("SAMContractGas", function () {
       from: accounts[4],
       value: "1200000000000000000",
     });
+
+    account4Tokens = await SAMContractGas.addrTokens(accounts[4]);
+    console.log(
+      "Escrow tokens of account 4 after place bid",
+      JSON.stringify(account4Tokens)
+    );
+    assert.equal(account4Tokens["claimableAmount"], "0");
+    assert.equal(account4Tokens["lockedAmount"], "1200000000000000000");
+
     await SAMContractGas.placeBid(listingId, {
       from: accounts[5],
       value: "1500000000000000000",
     });
+
+    // Check it has been refunded
+    account4Tokens = await SAMContractGas.addrTokens(accounts[4]);
+    console.log(
+      "Escrow tokens of account 4 after there is higher bid",
+      JSON.stringify(account4Tokens)
+    );
+    assert.equal(account4Tokens["claimableAmount"], "1200000000000000000");
 
     //const biddings = await getBiddingOfAddr(SAMContractGas, accounts[3]);
     const biddingIds = await SAMContractGas.biddingOfAddr(accounts[3]);
@@ -233,9 +258,13 @@ describe("SAMContractGas", function () {
     console.log("Biddings of address: ", JSON.stringify(biddingIds));
 
     const biddingDetails = await getBiddingOfAddr(SAMContractGas, accounts[3]);
+    assert.equal(biddingDetails.length, 0);
+
+    const biddingsOfAddr5 = await getBiddingOfAddr(SAMContractGas, accounts[5]);
+    console.log("biddingsOfAddr5 ", JSON.stringify(biddingsOfAddr5));
 
     await expect(
-      SAMContractGas.claimNft(biddingDetails[0][0], { from: accounts[3] })
+      SAMContractGas.claimNft(biddingsOfAddr5[0]["id"], { from: accounts[5] })
     ).to.be.revertedWith("The bidding period haven't complete");
 
     const today = Math.round(new Date() / 1000);
@@ -244,13 +273,7 @@ describe("SAMContractGas", function () {
     ]);
     await hre.network.provider.send("evm_mine");
 
-    await expect(
-      SAMContractGas.claimNft(biddingDetails[0][0], { from: accounts[3] })
-    ).to.be.revertedWith("The bidding is not the highest price");
-
-    const biddingsOfAddr5 = await getBiddingOfAddr(SAMContractGas, accounts[5]);
-
-    await SAMContractGas.claimNft(biddingsOfAddr5[0][0], {
+    await SAMContractGas.claimNft(biddingsOfAddr5[0]["id"], {
       from: accounts[5],
       value: "37500000000000000",
     });
