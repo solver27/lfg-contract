@@ -10,7 +10,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "./interfaces/ILFGNFT.sol";
 
 contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
 
@@ -47,7 +46,7 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
      * @dev this event calls when user update the NFT contract
      *
      */
-    event SetLfgNft(ILFGNFT _nft);
+    event SetLfgNft(IERC721 _nft);
 
     /**
      *
@@ -64,10 +63,10 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
     address [] public whitelistAddresses;
 
 
-    ILFGNFT public lfgNft;
+    IERC721 public lfgNft;
 
     constructor(
-        ILFGNFT _nft
+        IERC721 _nft
     ) {
         lfgNft = _nft;
     }
@@ -80,7 +79,7 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
      * @return {bool} return status of token address
      *
      */
-    function setNftToken(ILFGNFT _nft) external onlyOwner returns (bool) {
+    function setNftToken(IERC721 _nft) external onlyOwner returns (bool) {
         lfgNft = _nft;
         emit SetLfgNft(_nft);
         return true;
@@ -130,19 +129,19 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
 
     /**
      *
-     * @dev distribute the token to the investors
+     * @dev distribute the NFT to the stakers
      *
-     * @param {address} wallet address of the investor
+     * @param {tokenId} User can select which NFT to claim
      *
      * @return {bool} return status of distribution
      *
      */
-    function claimDistribution() external nonReentrant returns (bool) {
+    function claimDistribution(uint256 tokenId) external nonReentrant returns (bool) {
         require(whitelistPools[msg.sender].active, "User is not in whitelist");
         require(whitelistPools[msg.sender].distributedAmount < whitelistPools[msg.sender].nftAmount,
             "All nft has been claimed");
 
-        lfgNft.mint(whitelistPools[msg.sender].nftAmount - whitelistPools[msg.sender].distributedAmount, msg.sender);
+        lfgNft.safeTransferFrom(address(this), msg.sender, tokenId);
         whitelistPools[msg.sender].distributedAmount = whitelistPools[msg.sender].nftAmount;
         
         emit ClaimDistribution(msg.sender, whitelistPools[msg.sender].nftAmount - whitelistPools[msg.sender].distributedAmount);
