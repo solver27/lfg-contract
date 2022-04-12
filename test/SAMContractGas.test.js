@@ -97,6 +97,7 @@ describe("SAMContractGas", function () {
     await SAMContractGas.addListing(
       LFGNFT.address,
       account2TokenIds[0],
+      1, // copies
       0,
       "2000000000000000000",
       latestBlock["timestamp"] + 1,
@@ -182,6 +183,7 @@ describe("SAMContractGas", function () {
     await SAMContractGas.addListing(
       LFGNFT.address,
       account2TokenIds[0],
+      1, // copies
       1,
       "1000000000000000000",
       latestBlock["timestamp"] + 1,
@@ -342,6 +344,7 @@ describe("SAMContractGas", function () {
     await SAMContractGas.addListing(
       LFGNFT.address,
       account2TokenIds[0],
+      1, // copies
       1, // Auction
       "10000000",
       latestBlock["timestamp"] + 1,
@@ -388,6 +391,7 @@ describe("SAMContractGas", function () {
     await SAMContractGas.addListing(
       LFGNFT.address,
       account2TokenIds[0],
+      1, // copies
       2,
       "1000000000000000000",
       latestBlock["timestamp"] + 1,
@@ -475,6 +479,7 @@ describe("SAMContractGas", function () {
     await SAMContractGas.addListing(
       LFGNFT.address,
       account2TokenIds[lastIndex],
+      1, // copies
       0, // Fixed price
       "2000000000000000000",
       latestBlock["timestamp"] + 1,
@@ -553,6 +558,7 @@ describe("SAMContractGas", function () {
       SAMContractGas.addListing(
         LFGFireNFT.address,
         account2TokenIds[0],
+        1, // copies
         0,
         "20000000",
         latestBlock["timestamp"] + 1,

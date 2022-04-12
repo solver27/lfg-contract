@@ -67,6 +67,7 @@ contract SAMContract is SAMContractBase {
     function addListing(
         address _hostContract,
         uint256 _tokenId,
+        uint256 _copies,
         SellMode _sellMode,
         uint256 _price,
         uint256 _startTime,
@@ -77,6 +78,7 @@ contract SAMContract is SAMContractBase {
         _addListing(
             _hostContract,
             _tokenId,
+            _copies,
             _sellMode,
             _price,
             _startTime,

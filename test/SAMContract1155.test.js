@@ -100,7 +100,8 @@ describe("SAMContract1155", function () {
     await SAMContract.addListing(
       LFGNFT1155.address,
       id,
-      0,
+      1, // copies
+      0, // fixed price
       "20000000",
       latestBlock["timestamp"] + 1,
       3600 * 24,

@@ -103,9 +103,25 @@ describe("SAMContract", function () {
     let latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
+    await expect(
+      SAMContract.addListing(
+        LFGNFT.address,
+        account2TokenIds[0],
+        2, // copies
+        0,
+        "20000000",
+        latestBlock["timestamp"] + 1,
+        3600 * 24,
+        0,
+        0,
+        { from: accounts[2] }
+      )
+    ).to.be.revertedWith("ERC721 doesn't support copies");
+
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[0],
+      1, // copies
       0, // Fixed price mode
       "20000000",
       0, // Fixed price don't need start time
@@ -183,7 +199,8 @@ describe("SAMContract", function () {
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[0],
-      1,
+      1, // copies
+      1, // sell mode auction
       "10000000",
       latestBlock["timestamp"] + 1,
       3600 * 24,
@@ -306,6 +323,7 @@ describe("SAMContract", function () {
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[0],
+      1, // copies
       1, // Auction
       "10000000",
       latestBlock["timestamp"] + 1,
@@ -357,6 +375,7 @@ describe("SAMContract", function () {
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[0],
+      1, // copies
       2,
       "10000000",
       latestBlock["timestamp"] + 1,
@@ -448,6 +467,7 @@ describe("SAMContract", function () {
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[lastIndex],
+      1, // copies
       0,
       "20000000",
       latestBlock["timestamp"] + 1,
@@ -535,6 +555,7 @@ describe("SAMContract", function () {
     await SAMContract.addListing(
       LFGFireNFT.address,
       account2TokenIds[0],
+      1, // copies
       0,
       "20000000",
       latestBlock["timestamp"] + 1,
@@ -603,6 +624,7 @@ describe("SAMContract", function () {
     await SAMContract.addListing(
       LFGFireNFT.address,
       account2TokenIds[0],
+      1, // copies
       1, // auction
       "20000000",
       latestBlock["timestamp"] + 1,
@@ -660,6 +682,7 @@ describe("SAMContract", function () {
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[0],
+      1, // copies
       0, // fixed price
       "10000000",
       0, // The start time no use

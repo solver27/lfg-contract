@@ -92,6 +92,7 @@ describe("SAMContractGas1155", function () {
     await SAMContractGas.addListing(
       LFGNFT1155.address,
       id,
+      1, // copies
       0,
       "2000000000000000000",
       latestBlock["timestamp"] + 1,
