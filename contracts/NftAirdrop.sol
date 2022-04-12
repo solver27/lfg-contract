@@ -12,11 +12,9 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
-
     struct WhitelistInfo {
         address wallet;
-        uint256 nftAmount;
-        uint256 distributedAmount;
+        bool claimed;
         bool active;
     }
 
@@ -39,7 +37,7 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
      * @dev this event calls when user claim the NFT
      *
      */
-    event ClaimDistribution(address wallet, uint256 amount);
+    event ClaimDistribution(address wallet, uint256 tokenId);
 
     /**
      *
@@ -60,14 +58,11 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
      * @dev whitelistAddresses array of all active whitelist adresses, using array so can iterate all the keys.
      *
      */
-    address [] public whitelistAddresses;
-
+    address[] public whitelistAddresses;
 
     IERC721 public lfgNft;
 
-    constructor(
-        IERC721 _nft
-    ) {
+    constructor(IERC721 _nft) {
         lfgNft = _nft;
     }
 
@@ -94,19 +89,13 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
      * @return {bool} return status of the whitelist
      *
      */
-    function addWhitelists(
-        address[] calldata _wallet,
-        uint256[] calldata _nftAmount
-    ) external onlyOwner returns (bool) {
-        require(_wallet.length == _nftAmount.length, "Invalid array length");
-
+    function addWhitelists(address[] calldata _wallet) external onlyOwner returns (bool) {
         for (uint256 i = 0; i < _wallet.length; i++) {
             require(whitelistPools[_wallet[i]].wallet != _wallet[i], "Whitelist already available");
 
             whitelistPools[_wallet[i]].active = true;
             whitelistPools[_wallet[i]].wallet = _wallet[i];
-            whitelistPools[_wallet[i]].nftAmount = _nftAmount[i];
-            whitelistPools[_wallet[i]].distributedAmount = 0;
+            whitelistPools[_wallet[i]].claimed = false;
 
             whitelistAddresses.push(_wallet[i]);
 
@@ -138,21 +127,21 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
      */
     function claimDistribution(uint256 tokenId) external nonReentrant returns (bool) {
         require(whitelistPools[msg.sender].active, "User is not in whitelist");
-        require(whitelistPools[msg.sender].distributedAmount < whitelistPools[msg.sender].nftAmount,
-            "All nft has been claimed");
+        require(!whitelistPools[msg.sender].claimed, "User already claimed NFT");
 
         lfgNft.safeTransferFrom(address(this), msg.sender, tokenId);
-        whitelistPools[msg.sender].distributedAmount = whitelistPools[msg.sender].nftAmount;
-        
-        emit ClaimDistribution(msg.sender, whitelistPools[msg.sender].nftAmount - whitelistPools[msg.sender].distributedAmount);
+        whitelistPools[msg.sender].claimed = true;
+
+        emit ClaimDistribution(msg.sender, tokenId);
         return true;
     }
 
-    function decafLists(
-        address[] calldata _wallet
-    ) external onlyOwner returns (bool) {
+    function decafLists(address[] calldata _wallet) external onlyOwner returns (bool) {
         for (uint256 i = 0; i < _wallet.length; i++) {
-            require(whitelistPools[_wallet[i]].active, "Whitelist not exist or deactivated already");
+            require(
+                whitelistPools[_wallet[i]].active,
+                "Whitelist not exist or deactivated already"
+            );
             whitelistPools[_wallet[i]].active = false;
 
             emit DecafList(_wallet[i]);
@@ -164,7 +153,12 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
     /**
      * Always returns `IERC721Receiver.onERC721Received.selector`.
      */
-    function onERC721Received(address, address, uint256, bytes memory) public virtual override returns (bytes4) {
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes memory
+    ) public virtual override returns (bytes4) {
         return this.onERC721Received.selector;
     }
 }

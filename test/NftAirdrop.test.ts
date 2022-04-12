@@ -31,19 +31,17 @@ describe("NftAirdrop", function () {
       today + 1000,
     ]);
     await hre.network.provider.send("evm_mine");
-    await NftAirdrop.addWhitelists([accounts[1]], [airDropNftAmount]);
+    await NftAirdrop.addWhitelists([accounts[1]]);
 
     let minterResult = await LFGFireNFT.minters(NftAirdrop.address);
     console.log("Get minter result ", minterResult.toString());
 
     const whitelistInfo = await NftAirdrop.whitelistPools(accounts[1]);
-    expect(new BN(whitelistInfo.nftAmount).toString()).to.equal(
-      airDropNftAmount.toString()
-    );
-    expect(new BN(whitelistInfo.distributedAmount).toString()).to.equal("0");
+    expect(new BN(whitelistInfo.claimed).toString()).to.equal("0");
 
     const claimTokenId = "2";
 
+    // Claim the token before mint
     await expect(
       NftAirdrop.claimDistribution(claimTokenId, { from: accounts[1] })
     ).to.be.revertedWith("ERC721: operator query for nonexistent token");
@@ -58,12 +56,7 @@ describe("NftAirdrop", function () {
     console.log("Tokens of airdrop contract: ", JSON.stringify(tokenIds));
 
     const whitelistInfoAfter = await NftAirdrop.whitelistPools(accounts[1]);
-    expect(new BN(whitelistInfoAfter.nftAmount).toString()).to.equal(
-      airDropNftAmount.toString()
-    );
-    expect(new BN(whitelistInfoAfter.distributedAmount).toString()).to.equal(
-      airDropNftAmount.toString()
-    );
+    expect(whitelistInfoAfter.claimed.toString()).to.equal("true");
 
     const nftBalance = await LFGFireNFT.balanceOf(accounts[1]);
     console.log("nftBalance ", nftBalance.toString());
@@ -71,5 +64,10 @@ describe("NftAirdrop", function () {
 
     let claimedToken = await LFGFireNFT.tokensOfOwner(accounts[1]);
     assert.equal(claimedToken[0], claimTokenId);
+
+    // User try to claim again, it should revert.
+    await expect(
+      NftAirdrop.claimDistribution("3", { from: accounts[1] })
+    ).to.be.revertedWith("User already claimed NFT");
   });
 });
