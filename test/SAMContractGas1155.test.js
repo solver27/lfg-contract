@@ -43,8 +43,6 @@ describe("SAMContractGas1155", function () {
 
       LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
 
-      await LFGNFT1155.setCreatorWhitelist(accounts[2], true, { from: owner });
-
       NftWhiteList = await NftWhiteListArt.new(owner);
 
       SAMContractGas = await SAMContractGasArt.new(

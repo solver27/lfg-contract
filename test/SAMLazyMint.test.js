@@ -54,14 +54,6 @@ describe("SAMLazyMint", function () {
         revenueAddress
       );
 
-      await LFGNFT1155.setCreatorWhitelist(SAMLazyMint.address, true, {
-        from: owner,
-      });
-
-      await LFGNFT1155.setCreatorWhitelist(accounts[2], true, {
-        from: owner,
-      });
-
       // 2.5% fee, 50% of the fee burn
       await SAMLazyMint.updateFeeRate(250, { from: owner });
       await SAMLazyMint.updateBurnFeeRate(5000, { from: owner });

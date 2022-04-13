@@ -18,9 +18,6 @@ describe("LFGNFT1155", function () {
       [accounts[0], accounts[1], accounts[2], accounts[3], owner] =
         await web3.eth.getAccounts();
       LFGNFT1155 = await LFGNFT1155Art.new(owner, baseURI);
-
-      await LFGNFT1155.setCreatorWhitelist(accounts[1], true, { from: owner });
-      await LFGNFT1155.setCreatorWhitelist(accounts[2], true, { from: owner });
     } catch (err) {
       console.log(err);
     }
