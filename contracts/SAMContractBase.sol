@@ -360,7 +360,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     }
 
     /*
-     * @notice Update the fee rate and burn fee rate from the burn amount
+     * @notice Update the transaction fee rate and royalties fee rate
      * @dev Only callable by owner.
      * @param _feeRate: the fee rate the contract charge.
      * @param _royaltiesFeeRate: the royalties fee rate the contract charge.

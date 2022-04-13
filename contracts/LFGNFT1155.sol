@@ -5,8 +5,14 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
+    using Strings for uint256;
+
+    event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
+    event SetCreatorWhitelist(address indexed creator, bool isWhitelist);
+
     uint256 private _currentTokenID = 0;
     mapping(uint256 => address) public creators;
 
@@ -19,12 +25,20 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     }
 
     // royalties
-    mapping(uint256 => RoyaltyInfo) private royalties;
+    mapping(uint256 => RoyaltyInfo) public royalties;
+
+    struct Collection {
+        address initiator;
+        uint256[] ids;
+    }
+
+    // tokens in collection
+    mapping(bytes => Collection) public collections;
+
+    mapping(address => bool) public creatorWhiteLists;
 
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 2000;
-
-    event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
 
     /**
      * @dev Mapping of interface ids to whether or not it's supported.
@@ -59,7 +73,13 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC1155, IERC165)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId) || _supportedInterfaces[interfaceId];
     }
 
@@ -69,6 +89,13 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     modifier creatorOnly(uint256 _id) {
         require(creators[_id] == msg.sender, "ERC1155Tradable#creatorOnly: ONLY_CREATOR_ALLOWED");
         _;
+    }
+
+    function createCollection(bytes calldata _data) external {
+        require(_data.length > 0, "Invalid collection name");
+        require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
+        require(collections[_data].initiator == address(0), "Collection already created");
+        collections[_data].initiator = msg.sender;
     }
 
     /**
@@ -84,6 +111,17 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256 _initialSupply,
         bytes calldata _data
     ) external returns (uint256) {
+        require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
+
+        if (_data.length > 0) {
+            require(collections[_data].initiator != address(0), "Collection doesn't exist");
+            // If the collection already exists, then only the same user can add to the collection.
+            require(
+                tx.origin == collections[_data].initiator,
+                "Only the same user can add to collection"
+            );
+        }
+
         uint256 _id = _getNextTokenID();
         _incrementTokenTypeId();
         creators[_id] = msg.sender;
@@ -91,8 +129,54 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         if (_initialSupply > 0) {
             _mint(_to, _id, _initialSupply, _data);
         }
+
         tokenSupply[_id] = _initialSupply;
+
+        if (_data.length > 0) {
+            // Add Id to collections.
+            collections[_data].ids.push(_id);
+        }
+
         return _id;
+    }
+
+    function createBatch(
+        address _to,
+        uint256 _quantity,
+        uint256 _initialSupply,
+        bytes calldata _data
+    ) external returns (uint256[] memory) {
+        require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
+        require(_quantity > 0, "Invalid quantity");
+
+        if (_data.length > 0) {
+            require(collections[_data].initiator != address(0), "Collection doesn't exist");
+            // If the collection already exists, then only the same user can add to the collection.
+            require(
+                tx.origin == collections[_data].initiator,
+                "Only the same user can add to collection"
+            );
+        }
+
+        uint256[] memory ids = new uint256[](_quantity);
+        for (uint256 i = 0; i < _quantity; i++) {
+            uint256 _id = _getNextTokenID();
+            _incrementTokenTypeId();
+            creators[_id] = msg.sender;
+
+            if (_initialSupply > 0) {
+                _mint(_to, _id, _initialSupply, _data);
+            }
+            tokenSupply[_id] = _initialSupply;
+
+            if (_data.length > 0) {
+                // Add Id to collections.
+                collections[_data].ids.push(_id);
+            }
+
+            ids[i] = _id;
+        }
+        return ids;
     }
 
     /**
@@ -180,5 +264,36 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         if (royalties[_tokenId].rate > 0 && royalties[_tokenId].receiver != address(0)) {
             royaltyAmount = (_salePrice * royalties[_tokenId].rate) / 10000;
         }
+    }
+
+    /**
+     * @dev get the tokens of a collection
+     * @return uint256[] array of token ID
+     */
+    function getCollectionTokens(bytes calldata _collectionTag)
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return collections[_collectionTag].ids;
+    }
+
+    function setCreatorWhitelist(address _addr, bool _isWhitelist) external onlyOwner {
+        creatorWhiteLists[_addr] = _isWhitelist;
+
+        emit SetCreatorWhitelist(_addr, _isWhitelist);
+    }
+
+    function uri(uint256 _id) public view virtual override returns (string memory) {
+        require(_exists(_id), "ERC1155Metadata: URI query for nonexistent token");
+        string memory currentBaseURI = ERC1155.uri(_id);
+        return
+            bytes(currentBaseURI).length > 0
+                ? string(abi.encodePacked(currentBaseURI, _id.toString()))
+                : "";
+    }
+
+    function _exists(uint256 _tokenId) internal view returns (bool) {
+        return creators[_tokenId] != address(0);
     }
 }

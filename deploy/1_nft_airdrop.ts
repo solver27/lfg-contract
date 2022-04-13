@@ -9,7 +9,12 @@ async function deploy() {
   );
   const lfgFireNft: Contract = await LFGFireNFT.deploy();
   await lfgFireNft.deployed();
-  console.log("lfgNft deployed to: ", lfgFireNft.address);
+  console.log("lfgFireNft deployed to: ", lfgFireNft.address);
+
+  const LFGNFT: ContractFactory = await ethers.getContractFactory("LFGNFT");
+  const lfgNft: Contract = await LFGNFT.deploy();
+  await lfgNft.deployed();
+  console.log("lfgNft deployed to: ", lfgNft.address);
 
   const NftAirdrop: ContractFactory = await ethers.getContractFactory(
     "NftAirdrop"
@@ -17,7 +22,7 @@ async function deploy() {
 
   const nftAirdrop: Contract = await NftAirdrop.deploy(lfgFireNft.address);
   await nftAirdrop.deployed();
-  console.log("NftAirdrop deployed to: ", nftAirdrop.address);
+  console.log("nftAirdrop deployed to: ", nftAirdrop.address);
 }
 
 async function main(): Promise<void> {

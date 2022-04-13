@@ -10,26 +10,54 @@ describe("LFGNFT1155", function () {
   let accounts = ["", "", "", ""],
     owner;
 
+  const baseURI =
+    "https://gateway.pinata.cloud/ipfs/QmWNPuFyQLa2EjGPVAhA8veFc6yuTwNVEeGRgkCKk4NW5Q/";
+
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], accounts[2], accounts[3], owner] = await web3.eth.getAccounts();
-      LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
+      [accounts[0], accounts[1], accounts[2], accounts[3], owner] =
+        await web3.eth.getAccounts();
+      LFGNFT1155 = await LFGNFT1155Art.new(owner, baseURI);
+
+      await LFGNFT1155.setCreatorWhitelist(accounts[1], true, { from: owner });
+      await LFGNFT1155.setCreatorWhitelist(accounts[2], true, { from: owner });
     } catch (err) {
       console.log(err);
     }
   });
 
   it("test NFT 1155 mint", async function () {
-    let result = await LFGNFT1155.create(accounts[1], 10, "0x0", { from: accounts[1] });
+    const collectionTag = web3.utils.asciiToHex("CryoptKitty");
+
+    await expect(
+      LFGNFT1155.create(accounts[1], 10, collectionTag, {
+        from: accounts[1],
+      })
+    ).to.be.revertedWith("Collection doesn't exist");
+
+    await LFGNFT1155.createCollection(collectionTag, {
+      from: accounts[1],
+    });
+
+    let result = await LFGNFT1155.create(accounts[1], 10, collectionTag, {
+      from: accounts[1],
+    });
+
     console.log(JSON.stringify(result));
     let id = result["logs"][0]["args"]["id"];
     console.log("id: ", id.toString());
+
+    let tokenUri = await LFGNFT1155.uri(id);
+    console.log("Token 1 uri: ", tokenUri);
+    assert.equal(tokenUri, baseURI + "1");
 
     const nftBalance1 = await LFGNFT1155.balanceOf(accounts[1], id);
     console.log("nftBalance of account 1 ", nftBalance1.toString());
     assert.equal(nftBalance1.toString(), "10");
 
-    await LFGNFT1155.mint(accounts[2], id, 10, "0x0", { from: accounts[1] });
+    await LFGNFT1155.mint(accounts[2], id, 10, collectionTag, {
+      from: accounts[1],
+    });
     let nftBalance2 = await LFGNFT1155.balanceOf(accounts[2], id);
     console.log("nftBalance of account 2 ", nftBalance2.toString());
     assert.equal(nftBalance2.toString(), "10");
@@ -37,7 +65,16 @@ describe("LFGNFT1155", function () {
     const token1Supply = await LFGNFT1155.tokenSupply(id);
     assert.equal(token1Supply.toString(), "20");
 
-    await LFGNFT1155.safeTransferFrom(accounts[2], accounts[3], id, 5, "0x0", { from: accounts[2] });
+    await LFGNFT1155.safeTransferFrom(
+      accounts[2],
+      accounts[3],
+      id,
+      5,
+      collectionTag,
+      {
+        from: accounts[2],
+      }
+    );
 
     nftBalance2 = await LFGNFT1155.balanceOf(accounts[2], id);
     console.log("nftBalance of account 2 ", nftBalance2.toString());
@@ -61,12 +98,48 @@ describe("LFGNFT1155", function () {
       LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: owner })
     ).to.be.revertedWith("NFT: Invalid creator");
 
-    await LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: accounts[1] })
+    await LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: accounts[1] });
 
     royaltyInfo = await LFGNFT1155.royaltyInfo(id, 10000);
     console.log("royaltyInfo ", JSON.stringify(royaltyInfo));
 
     assert.equal(royaltyInfo["receiver"], accounts[1]);
     assert.equal(royaltyInfo["royaltyAmount"], "1000");
+
+    await expect(
+      LFGNFT1155.create(accounts[2], 10, collectionTag, {
+        from: accounts[2],
+      })
+    ).to.be.revertedWith("Only the same user can add to collection");
+
+    await expect(
+      LFGNFT1155.createBatch(accounts[2], 10, 0, collectionTag, {
+        from: accounts[2],
+      })
+    ).to.be.revertedWith("Only the same user can add to collection");
+
+    const collectionTagPok = web3.utils.asciiToHex("Pokemon");
+    await LFGNFT1155.createCollection(collectionTagPok, {
+      from: accounts[2],
+    });
+
+    await LFGNFT1155.createBatch(accounts[2], 10, 0, collectionTagPok, {
+      from: accounts[2],
+    });
+
+    let getCollections = await LFGNFT1155.collections(collectionTagPok);
+    console.log("Collections: ", JSON.stringify(getCollections));
+
+    let collectionTokens = await LFGNFT1155.getCollectionTokens(
+      collectionTagPok
+    );
+    console.log("Collections tokens: ", JSON.stringify(collectionTokens));
+
+    // try to create the same token again.
+    await expect(
+      LFGNFT1155.createCollection(collectionTag, {
+        from: accounts[1],
+      })
+    ).to.be.revertedWith("Collection already created");
   });
 });
