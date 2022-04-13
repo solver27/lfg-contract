@@ -22,7 +22,6 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
     event ListingPlaced(
         bytes32 indexed listingId,
         address indexed sender,
-        uint256 indexed jobId,
         bytes collectionTag,
         uint256 tokenId,
         SellMode sellMode,
@@ -49,7 +48,6 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
     struct listing {
         bytes32 id; // The listing id
         address seller; // The owner of the NFT who want to sell it
-        uint256 jobId; // The job ID created from service
         bytes collectionTag; // The collection tag
         uint256 tokenId;
         SellMode sellMode; // The sell mode the NFT, fixed price, auction or dutch auction
@@ -98,7 +96,6 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
      * @dev Only the token owner can call, because need to transfer the ownership of the token to marketplace contract.
      */
     function _addListing(
-        uint256 _jobId,
         bytes calldata _collectionTag,
         SellMode _sellMode,
         uint256 _price,
@@ -127,7 +124,6 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         bytes32 listingId = keccak256(
             abi.encodePacked(
                 operationNonce,
-                _jobId,
                 _collectionTag,
                 tokenId,
                 _sellMode,
@@ -141,7 +137,6 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
 
         listingRegistry[listingId].id = listingId;
         listingRegistry[listingId].seller = msg.sender;
-        listingRegistry[listingId].jobId = _jobId;
         listingRegistry[listingId].collectionTag = _collectionTag;
         listingRegistry[listingId].tokenId = tokenId;
         listingRegistry[listingId].sellMode = _sellMode;
@@ -157,7 +152,6 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         emit ListingPlaced(
             listingId,
             msg.sender,
-            _jobId,
             _collectionTag,
             tokenId,
             _sellMode,

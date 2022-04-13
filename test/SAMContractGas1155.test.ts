@@ -47,10 +47,7 @@ describe("SAMContractGas1155", function () {
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
-      SAMContractGas = await SAMContractGasArt.new(
-        owner,
-        NftWhiteList.address
-      );
+      SAMContractGas = await SAMContractGasArt.new(owner, NftWhiteList.address);
 
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT1155.address, true, {
@@ -65,10 +62,11 @@ describe("SAMContractGas1155", function () {
   });
 
   it("test buy now feature", async function () {
-    let result = await LFGNFT1155.create(accounts[2], 2, "0x0", {
+    const emptyCollection = [];
+    let result = await LFGNFT1155.create(accounts[2], 2, emptyCollection, {
       from: accounts[2],
     });
-    result = await LFGNFT1155.create(accounts[2], 2, "0x0", {
+    result = await LFGNFT1155.create(accounts[2], 2, emptyCollection, {
       from: accounts[2],
     });
     let id = result["logs"][0]["args"]["id"];

@@ -54,12 +54,17 @@ describe("SAMLazyMint", function () {
         revenueAddress
       );
 
-      await LFGNFT1155.setCreatorWhitelist(SAMLazyMint.address, true, {from: owner});
+      await LFGNFT1155.setCreatorWhitelist(SAMLazyMint.address, true, {
+        from: owner,
+      });
+
+      await LFGNFT1155.setCreatorWhitelist(accounts[2], true, {
+        from: owner,
+      });
 
       // 2.5% fee, 50% of the fee burn
       await SAMLazyMint.updateFeeRate(250, { from: owner });
       await SAMLazyMint.updateBurnFeeRate(5000, { from: owner });
-
     } catch (err) {
       console.log(err);
     }
@@ -70,14 +75,16 @@ describe("SAMLazyMint", function () {
     console.log("firstCreateor ", firstCreateor.toString());
     assert.equal(firstCreateor, "0x0000000000000000000000000000000000000000");
 
+
+    const collectionTag = web3.utils.asciiToHex("CryoptKitty");
+    await LFGNFT1155.createCollection(collectionTag, {
+      from: accounts[2],
+    });
+
     const latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
-    const jobId = "1";
-
-    const collectionTag = web3.utils.asciiToHex("CryoptKitty");
     await SAMLazyMint.addCollectionListing(
-      jobId,
       collectionTag,
       10, // Collection count 10
       0,

@@ -66,11 +66,7 @@ describe("SAMContract1155", function () {
       await SAMContract.updateFeeRate(250, 1000, { from: owner });
       await SAMContract.updateBurnFeeRate(5000, { from: owner });
 
-      BurnToken = await BurnTokenArt.new(
-        owner,
-        LFGToken.address,
-        burnAddress1
-      );
+      BurnToken = await BurnTokenArt.new(owner, LFGToken.address, burnAddress1);
       await BurnToken.setOperator(SAMContract.address, true, { from: owner });
     } catch (err) {
       console.log(err);
@@ -78,10 +74,11 @@ describe("SAMContract1155", function () {
   });
 
   it("test 1155 NFT buy now feature", async function () {
-    let result = await LFGNFT1155.create(accounts[2], 2, "0x0", {
+    const emptyCollection = [];
+    let result = await LFGNFT1155.create(accounts[2], 2, emptyCollection, {
       from: accounts[2],
     });
-    result = await LFGNFT1155.create(accounts[2], 2, "0x0", {
+    result = await LFGNFT1155.create(accounts[2], 2, emptyCollection, {
       from: accounts[2],
     });
     let id = result["logs"][0]["args"]["id"];

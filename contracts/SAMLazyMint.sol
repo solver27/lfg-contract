@@ -83,7 +83,7 @@ contract SAMLazyMint is SAMLazyMintBase {
 
         _depositToken(msg.sender, price);
 
-        bytes32 biddingId = keccak256(abi.encodePacked(operationNonce, lst.jobId, price));
+        bytes32 biddingId = keccak256(abi.encodePacked(operationNonce, lst.tokenId, price));
 
         biddingRegistry[biddingId].id = biddingId;
         biddingRegistry[biddingId].bidder = msg.sender;
@@ -105,7 +105,6 @@ contract SAMLazyMint is SAMLazyMintBase {
      * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
      */
     function addListing(
-        uint256 _jobId,
         bytes calldata _collectionTag,
         SellMode _sellMode,
         uint256 _price,
@@ -115,7 +114,6 @@ contract SAMLazyMint is SAMLazyMintBase {
         uint256 _discountAmount
     ) external nonReentrant {
         _addListing(
-            _jobId,
             _collectionTag,
             _sellMode,
             _price,
@@ -131,7 +129,6 @@ contract SAMLazyMint is SAMLazyMintBase {
      * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
      */
     function addCollectionListing(
-        uint256 _jobId,
         bytes calldata _collectionTag,
         uint256 _collectionCount,
         SellMode _sellMode,
@@ -143,7 +140,6 @@ contract SAMLazyMint is SAMLazyMintBase {
     ) external nonReentrant {
         for (uint256 i = 0; i < _collectionCount; ++i) {
             _addListing(
-                _jobId,
                 _collectionTag,
                 _sellMode,
                 _price,

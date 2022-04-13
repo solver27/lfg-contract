@@ -28,9 +28,21 @@ describe("LFGNFT1155", function () {
 
   it("test NFT 1155 mint", async function () {
     const collectionTag = web3.utils.asciiToHex("CryoptKitty");
+
+    await expect(
+      LFGNFT1155.create(accounts[1], 10, collectionTag, {
+        from: accounts[1],
+      })
+    ).to.be.revertedWith("Collection doesn't exist");
+
+    await LFGNFT1155.createCollection(collectionTag, {
+      from: accounts[1],
+    });
+
     let result = await LFGNFT1155.create(accounts[1], 10, collectionTag, {
       from: accounts[1],
     });
+
     console.log(JSON.stringify(result));
     let id = result["logs"][0]["args"]["id"];
     console.log("id: ", id.toString());
@@ -107,6 +119,10 @@ describe("LFGNFT1155", function () {
     ).to.be.revertedWith("Only the same user can add to collection");
 
     const collectionTagPok = web3.utils.asciiToHex("Pokemon");
+    await LFGNFT1155.createCollection(collectionTagPok, {
+      from: accounts[2],
+    });
+
     await LFGNFT1155.createBatch(accounts[2], 10, 0, collectionTagPok, {
       from: accounts[2],
     });
@@ -114,7 +130,16 @@ describe("LFGNFT1155", function () {
     let getCollections = await LFGNFT1155.collections(collectionTagPok);
     console.log("Collections: ", JSON.stringify(getCollections));
 
-    let collectionTokens = await LFGNFT1155.getCollectionTokens(collectionTagPok);
+    let collectionTokens = await LFGNFT1155.getCollectionTokens(
+      collectionTagPok
+    );
     console.log("Collections tokens: ", JSON.stringify(collectionTokens));
+
+    // try to create the same token again.
+    await expect(
+      LFGNFT1155.createCollection(collectionTag, {
+        from: accounts[1],
+      })
+    ).to.be.revertedWith("Collection already created");
   });
 });
