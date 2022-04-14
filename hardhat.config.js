@@ -51,14 +51,14 @@ module.exports = {
       gasPrice: 20e9,
       gas: 35e5,
     },
-    // bsc: {
-    //   accounts: [process.env.MAINNET_PRIVKEY || ""],
-    //   chainId: 56,
-    //   url: "https://bsc-dataseed1.ninicoin.io/",
-    //   timeout: 999999,
-    //   gasPrice: 20e9,
-    //   gas: 35e5,
-    // },
+    bsc: {
+      accounts: [process.env.MAINNET_PRIVKEY || ""],
+      chainId: 56,
+      url: "https://bsc-dataseed1.ninicoin.io/",
+      timeout: 999999,
+      gasPrice: 20e9,
+      gas: 35e5,
+    },
   },
   etherscan: {
     apiKey: process.env.BSCSCAN_API
