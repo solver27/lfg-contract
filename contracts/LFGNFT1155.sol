@@ -12,6 +12,8 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
 
     event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
 
+    event CreateCollection(address indexed addr, bytes data);
+
     uint256 private _currentTokenID = 0;
     mapping(uint256 => address) public creators;
 
@@ -92,6 +94,8 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         require(_data.length > 0, "Invalid collection name");
         require(collections[_data].initiator == address(0), "Collection already created");
         collections[_data].initiator = msg.sender;
+
+        emit CreateCollection(msg.sender, _data);
     }
 
     /**
