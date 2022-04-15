@@ -98,6 +98,29 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         emit CreateCollection(msg.sender, _data);
     }
 
+    function _create(
+        address _to,
+        uint256 _initialSupply,
+        bytes calldata _data
+    ) internal returns (uint256) {
+        uint256 _id = _getNextTokenID();
+        _incrementTokenTypeId();
+        creators[_id] = msg.sender;
+
+        if (_initialSupply > 0) {
+            _mint(_to, _id, _initialSupply, _data);
+        }
+
+        tokenSupply[_id] = _initialSupply;
+
+        if (_data.length > 0) {
+            // Add Id to collections.
+            collections[_data].ids.push(_id);
+        }
+
+        return _id;
+    }
+
     /**
      * @dev Creates a new token type and assigns _initialSupply to an address
      * NOTE: remove onlyOwner if you want third parties to create new tokens on your contract (which may change your IDs)
@@ -120,22 +143,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
             );
         }
 
-        uint256 _id = _getNextTokenID();
-        _incrementTokenTypeId();
-        creators[_id] = msg.sender;
-
-        if (_initialSupply > 0) {
-            _mint(_to, _id, _initialSupply, _data);
-        }
-
-        tokenSupply[_id] = _initialSupply;
-
-        if (_data.length > 0) {
-            // Add Id to collections.
-            collections[_data].ids.push(_id);
-        }
-
-        return _id;
+        return _create(_to, _initialSupply, _data);
     }
 
     function createBatch(
@@ -157,21 +165,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
 
         uint256[] memory ids = new uint256[](_quantity);
         for (uint256 i = 0; i < _quantity; i++) {
-            uint256 _id = _getNextTokenID();
-            _incrementTokenTypeId();
-            creators[_id] = msg.sender;
-
-            if (_initialSupply > 0) {
-                _mint(_to, _id, _initialSupply, _data);
-            }
-            tokenSupply[_id] = _initialSupply;
-
-            if (_data.length > 0) {
-                // Add Id to collections.
-                collections[_data].ids.push(_id);
-            }
-
-            ids[i] = _id;
+            ids[i] = _create(_to, _initialSupply, _data);
         }
         return ids;
     }
