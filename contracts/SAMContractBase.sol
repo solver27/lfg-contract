@@ -110,11 +110,13 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     // The nft whitelist contract
     INftWhiteList public nftWhiteListContract;
 
-    struct nftItem {
-        address owner; // The owner of the NFT
-        address hostContract; // The source of the contract
-        uint256 tokenId; // The NFT token ID
-    }
+    // The revenue address
+    address public revenueAddress;
+
+    // Total revenue amount
+    uint256 public revenueAmount;
+
+    mapping(address => uint256) public addrTokens;
 
     uint256 public totalEscrowAmount;
 

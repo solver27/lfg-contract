@@ -22,18 +22,10 @@ contract SAMContract is SAMContractBase {
     // The total burned token amount
     uint256 public totalBurnAmount;
 
-    // The revenue address
-    address public revenueAddress;
-
-    // Total revenue amount
-    uint256 public revenueAmount;
-
     //address public burnFromAddress;
     IBurnToken public burnTokenContract;
 
     IERC20 public lfgToken;
-
-    mapping(address => uint256) public addrTokens;
 
     constructor(
         address _owner,
@@ -118,12 +110,9 @@ contract SAMContract is SAMContractBase {
 
         // this is a lower price bid before, need to return Token back to the buyer
         if (lst.biddingId != 0) {
-            _transferToken(
-                biddingRegistry[lst.biddingId].bidder,
-                biddingRegistry[lst.biddingId].bidder,
-                biddingRegistry[lst.biddingId].price
-            );
-            _removeBidding(lst.biddingId, biddingRegistry[lst.biddingId].bidder);
+            address olderBidder = biddingRegistry[lst.biddingId].bidder;
+            _transferToken(olderBidder, olderBidder, biddingRegistry[lst.biddingId].price);
+            _removeBidding(lst.biddingId, olderBidder);
         }
 
         _depositToken(msg.sender, price);

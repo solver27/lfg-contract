@@ -7,24 +7,19 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IERC2981.sol";
 import "./SAMContractBase.sol";
+import "hardhat/console.sol";
 
 contract SAMContractGas is SAMContractBase {
-    event ClaimBalance(address indexed addr, uint256 amount);
-
-    // Total revenue amount
-    uint256 public revenueAmount;
-
-    struct userToken {
-        uint256 claimableAmount;
-        uint256 lockedAmount;
-    }
-
-    mapping(address => userToken) public addrTokens;
-
-    constructor(address _owner, INftWhiteList _nftWhiteList) {
+    constructor(
+        address _owner,
+        INftWhiteList _nftWhiteList,
+        address _revenueAddress
+    ) {
         require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
         nftWhiteListContract = _nftWhiteList;
+
+        revenueAddress = _revenueAddress;
 
         feeRate = 250; // 2.5%
         royaltiesFeeRate = 1000; // Default 10% royalties fee.
@@ -46,13 +41,14 @@ contract SAMContractGas is SAMContractBase {
         if (royaltiesAmount > 0) {
             uint256 royaltyFee = (royaltiesAmount * royaltiesFeeRate) / FEE_RATE_BASE;
             if (royaltyFee > 0) {
+                _transferToken(msg.sender, revenueAddress, royaltyFee);
                 revenueAmount += royaltyFee;
 
                 emit RoyaltiesFeePaid(_contract, tokenId, royaltyFee);
             }
 
             uint256 payToReceiver = royaltiesAmount - royaltyFee;
-            addrTokens[royaltiesReceiver].claimableAmount = payToReceiver;
+            _transferToken(msg.sender, royaltiesReceiver, payToReceiver);
 
             // Broadcast royalties payment
             emit RoyaltiesPaid(_contract, tokenId, payToReceiver);
@@ -82,13 +78,16 @@ contract SAMContractGas is SAMContractBase {
 
         if (lst.biddingId != 0) {
             address olderBidder = biddingRegistry[lst.biddingId].bidder;
-            addrTokens[olderBidder].lockedAmount -= biddingRegistry[lst.biddingId].price;
-            addrTokens[olderBidder].claimableAmount += biddingRegistry[lst.biddingId].price;
+            console.log(
+                "Refund %s tokens to %s",
+                biddingRegistry[lst.biddingId].price,
+                olderBidder
+            );
+            _transferToken(olderBidder, olderBidder, biddingRegistry[lst.biddingId].price);
             _removeBidding(lst.biddingId, olderBidder);
         }
 
-        addrTokens[msg.sender].lockedAmount += msg.value;
-        totalEscrowAmount += msg.value;
+        _depositToken(msg.value);
 
         bytes32 biddingId = keccak256(
             abi.encodePacked(operationNonce, lst.hostContract, lst.tokenId)
@@ -155,20 +154,28 @@ contract SAMContractGas is SAMContractBase {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
         require(msg.value >= price + fee, "Not enough funds to buy");
 
-        totalEscrowAmount += price;
+        _processFee(price);
+
+        _depositToken(price);
 
         uint256 sellerAmount = price;
         if (_checkRoyalties(lst.hostContract)) {
             sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, price);
         }
 
-        addrTokens[lst.seller].claimableAmount += sellerAmount;
-        revenueAmount += msg.value - price;
+        _transferToken(msg.sender, lst.seller, sellerAmount);
+
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         emit BuyNow(listingId, msg.sender, price);
 
         _removeListing(listingId, lst.seller);
+    }
+
+    function _processFee(uint256 price) internal {
+        uint256 fee = (price * feeRate) / FEE_RATE_BASE;
+        payable(revenueAddress).transfer(fee);
+        revenueAmount += fee;
     }
 
     /*
@@ -187,8 +194,8 @@ contract SAMContractGas is SAMContractBase {
 
         uint256 fee = (bid.price * feeRate) / FEE_RATE_BASE;
         require(msg.value >= fee, "Not enough gas to pay the fee");
-        revenueAmount += msg.value;
 
+        _processFee(bid.price);
         _transferNft(msg.sender, lst.hostContract, lst.tokenId);
 
         uint256 sellerAmount = bid.price;
@@ -196,34 +203,30 @@ contract SAMContractGas is SAMContractBase {
             sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, bid.price);
         }
 
-        addrTokens[msg.sender].lockedAmount -= bid.price;
-        addrTokens[lst.seller].claimableAmount += sellerAmount;
+        _transferToken(msg.sender, lst.seller, sellerAmount);
 
         emit ClaimNFT(bid.listingId, biddingId, msg.sender);
 
         _removeListing(bid.listingId, lst.seller);
     }
 
-    /*
-     * @notice The NFT seller or failed bidder can claim the token back.
-     * @dev All the available token under his account will be claimed.
-     */
-    function claimBalance() external nonReentrant {
-        require(addrTokens[msg.sender].claimableAmount > 0, "The claimableAmount is zero");
-        payable(msg.sender).transfer(addrTokens[msg.sender].claimableAmount);
-
-        emit ClaimBalance(msg.sender, addrTokens[msg.sender].claimableAmount);
-
-        totalEscrowAmount -= addrTokens[msg.sender].claimableAmount;
-        addrTokens[msg.sender].claimableAmount = 0;
+    // Escrow the gas to the contract, using _amount instead of msg.value
+    // because msg.value may include the fee.
+    function _depositToken(uint256 _amount) internal {
+        // Using lfgToken.safeTransferFrom(addr, address(this), _amount) will increase
+        // contract size for 0.13KB, which will make the contract no deployable.
+        addrTokens[msg.sender] += _amount;
+        totalEscrowAmount += _amount;
     }
 
-    /*
-     * @notice Owner to withdraw revenue from the contract.
-     */
-    function revenueSweep() external onlyOwner {
-        require(revenueAmount > 0, "No revenue to sweep");
-        payable(msg.sender).transfer(revenueAmount);
-        revenueAmount = 0;
+    function _transferToken(
+        address from,
+        address to,
+        uint256 _amount
+    ) internal {
+        require(addrTokens[from] >= _amount, "The locked amount is not enough");
+        payable(to).transfer(_amount);
+        addrTokens[from] -= _amount;
+        totalEscrowAmount -= _amount;
     }
 }

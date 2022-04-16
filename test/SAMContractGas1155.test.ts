@@ -47,7 +47,11 @@ describe("SAMContractGas1155", function () {
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
-      SAMContractGas = await SAMContractGasArt.new(owner, NftWhiteList.address);
+      SAMContractGas = await SAMContractGasArt.new(
+        owner,
+        NftWhiteList.address,
+        revenueAddress
+      );
 
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT1155.address, true, {
@@ -139,15 +143,10 @@ describe("SAMContractGas1155", function () {
 
     let account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(
-      account2Tokens["claimableAmount"].toString(),
-      "2000000000000000000"
-    );
 
     listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
 
-    await SAMContractGas.claimBalance({ from: accounts[2] });
     balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.isAbove(
@@ -157,7 +156,7 @@ describe("SAMContractGas1155", function () {
 
     account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
-    assert.equal(account2Tokens["claimableAmount"].toString(), "0");
+    assert.equal(account2Tokens.toString(), "0");
 
     let revenueAmount = await SAMContractGas.revenueAmount();
     assert.equal(revenueAmount.toString(), "50000000000000000");
