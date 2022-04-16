@@ -120,6 +120,22 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
 
     uint256 public totalEscrowAmount;
 
+    constructor(
+        address _owner,
+        INftWhiteList _nftWhiteList,
+        address _revenueAddress
+    ) {
+        require(_owner != address(0), "Invalid owner address");
+        _transferOwnership(_owner);
+        nftWhiteListContract = _nftWhiteList;
+
+        require(_owner != address(0), "Invalid revenue address");
+        revenueAddress = _revenueAddress;
+
+        feeRate = 250; // 2.5%
+        royaltiesFeeRate = 1000; // Default 10% royalties fee.
+    }
+
     /// @notice Checks if NFT contract implements the ERC-2981 interface
     /// @param _contract - the address of the NFT contract to query
     /// @return true if ERC-2981 interface is supported, false otherwise

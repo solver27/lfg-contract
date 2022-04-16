@@ -56,6 +56,10 @@ describe("SAMContractGas", function () {
         revenueAddress
       );
 
+      // make sure the default fee rate is correct.
+      const feeRateResult = await SAMContractGas.feeRate();
+      assert.equal(feeRateResult.toString(), "250");
+
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT.address, true, {
         from: owner,

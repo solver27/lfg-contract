@@ -33,13 +33,9 @@ contract SAMContract is SAMContractBase {
         INftWhiteList _nftWhiteList,
         address _burnAddress,
         address _revenueAddress
-    ) {
-        require(_owner != address(0), "Invalid owner address");
-        _transferOwnership(_owner);
+    ) SAMContractBase(_owner, _nftWhiteList, _revenueAddress) {
         lfgToken = _lfgToken;
-        nftWhiteListContract = _nftWhiteList;
         burnAddress = _burnAddress;
-        revenueAddress = _revenueAddress;
 
         feeRate = 125; // 1.25%
         feeBurnRate = 5000; // 50%

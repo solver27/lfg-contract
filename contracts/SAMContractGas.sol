@@ -14,15 +14,7 @@ contract SAMContractGas is SAMContractBase {
         address _owner,
         INftWhiteList _nftWhiteList,
         address _revenueAddress
-    ) {
-        require(_owner != address(0), "Invalid owner address");
-        _transferOwnership(_owner);
-        nftWhiteListContract = _nftWhiteList;
-
-        revenueAddress = _revenueAddress;
-
-        feeRate = 250; // 2.5%
-        royaltiesFeeRate = 1000; // Default 10% royalties fee.
+    ) SAMContractBase(_owner, _nftWhiteList, _revenueAddress) {
     }
 
     function _deduceRoyalties(
