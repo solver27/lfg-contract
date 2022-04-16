@@ -108,6 +108,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         creators[_id] = msg.sender;
 
         if (_initialSupply > 0) {
+            require(_to != address(0), "NFT: invalid address");
             _mint(_to, _id, _initialSupply, _data);
         }
 
@@ -183,8 +184,10 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256 _quantity,
         bytes memory _data
     ) public creatorOnly(_id) {
+        require(_to != address(0), "NFT: invalid address");
         require(_id > 0, "Invalid token id");
         require(_quantity > 0, "Invalid quantity");
+
         _mint(_to, _id, _quantity, _data);
         tokenSupply[_id] += _quantity;
     }
@@ -202,10 +205,16 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256[] memory _quantities,
         bytes memory _data
     ) public {
+        require(_to != address(0), "NFT: invalid address");
+
         for (uint256 i = 0; i < _ids.length; i++) {
             uint256 _id = _ids[i];
             require(creators[_id] == msg.sender, "ERC1155Tradable#batchMint: ONLY_CREATOR_ALLOWED");
+
             uint256 quantity = _quantities[i];
+            require(_id > 0, "Invalid token id");
+            require(quantity > 0, "Invalid quantity");
+
             tokenSupply[_id] += quantity;
         }
         _mintBatch(_to, _ids, _quantities, _data);
