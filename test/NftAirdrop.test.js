@@ -26,9 +26,9 @@ describe("NftAirdrop", function () {
   });
 
   it("test claim NFT method", async function () {
-    const today = Math.round(new Date() / 1000);
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     await hre.network.provider.send("evm_setNextBlockTimestamp", [
-      today + 1000,
+      latestBlock["timestamp"] + 1000,
     ]);
     await hre.network.provider.send("evm_mine");
     await NftAirdrop.addWhitelists([accounts[1]]);

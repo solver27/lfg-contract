@@ -94,7 +94,7 @@ describe("SAMContract1155", function () {
       from: accounts[2],
     });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
     await SAMContract.addListing(
