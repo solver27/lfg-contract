@@ -9,56 +9,11 @@ import "./interfaces/IERC2981.sol";
 import "./SAMContractBase.sol";
 
 contract SAMContractGas is SAMContractBase {
-    event ClaimBalance(address indexed addr, uint256 amount);
-
-    // Total revenue amount
-    uint256 public revenueAmount;
-
-    struct userToken {
-        uint256 claimableAmount;
-        uint256 lockedAmount;
-    }
-
-    mapping(address => userToken) public addrTokens;
-
-    constructor(address _owner, INftWhiteList _nftWhiteList) {
-        require(_owner != address(0), "Invalid owner address");
-        _transferOwnership(_owner);
-        nftWhiteListContract = _nftWhiteList;
-
-        feeRate = 250; // 2.5%
-        royaltiesFeeRate = 1000; // Default 10% royalties fee.
-    }
-
-    function _deduceRoyalties(
-        address _contract,
-        uint256 tokenId,
-        uint256 grossSaleValue
-    ) internal returns (uint256 netSaleAmount) {
-        // Get amount of royalties to pays and recipient
-        (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981(_contract).royaltyInfo(
-            tokenId,
-            grossSaleValue
-        );
-        // Deduce royalties from sale value
-        uint256 netSaleValue = grossSaleValue - royaltiesAmount;
-        // Transfer royalties to rightholder if not zero
-        if (royaltiesAmount > 0) {
-            uint256 royaltyFee = (royaltiesAmount * royaltiesFeeRate) / FEE_RATE_BASE;
-            if (royaltyFee > 0) {
-                revenueAmount += royaltyFee;
-
-                emit RoyaltiesFeePaid(_contract, tokenId, royaltyFee);
-            }
-
-            uint256 payToReceiver = royaltiesAmount - royaltyFee;
-            addrTokens[royaltiesReceiver].claimableAmount = payToReceiver;
-
-            // Broadcast royalties payment
-            emit RoyaltiesPaid(_contract, tokenId, payToReceiver);
-        }
-
-        return netSaleValue;
+    constructor(
+        address _owner,
+        INftWhiteList _nftWhiteList,
+        address _revenueAddress
+    ) SAMContractBase(_owner, _nftWhiteList, _revenueAddress) {
     }
 
     /*
@@ -66,46 +21,7 @@ contract SAMContractGas is SAMContractBase {
      * @dev The bidding price must higher than previous price.
      */
     function placeBid(bytes32 listingId) external payable nonReentrant {
-        listing storage lst = listingRegistry[listingId];
-        require(lst.sellMode == SellMode.Auction, "Can only bid for listing on auction");
-        require(block.timestamp >= lst.startTime, "The auction haven't start");
-        require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
-        require(msg.sender != lst.seller, "Bidder cannot be seller");
-
-        uint256 minPrice = lst.price;
-
-        if (lst.biddingId != 0) {
-            minPrice = biddingRegistry[lst.biddingId].price;
-        }
-
-        require(msg.value > minPrice, "Bid price too low");
-
-        if (lst.biddingId != 0) {
-            address olderBidder = biddingRegistry[lst.biddingId].bidder;
-            addrTokens[olderBidder].lockedAmount -= biddingRegistry[lst.biddingId].price;
-            addrTokens[olderBidder].claimableAmount += biddingRegistry[lst.biddingId].price;
-            _removeBidding(lst.biddingId, olderBidder);
-        }
-
-        addrTokens[msg.sender].lockedAmount += msg.value;
-        totalEscrowAmount += msg.value;
-
-        bytes32 biddingId = keccak256(
-            abi.encodePacked(operationNonce, lst.hostContract, lst.tokenId)
-        );
-
-        biddingRegistry[biddingId].bidder = msg.sender;
-        biddingRegistry[biddingId].listingId = listingId;
-        biddingRegistry[biddingId].price = msg.value;
-        biddingRegistry[biddingId].timestamp = block.timestamp;
-
-        operationNonce++;
-
-        lst.biddingId = biddingId;
-
-        addrBiddingIds[msg.sender].push(biddingId);
-
-        emit BiddingPlaced(biddingId, listingId, msg.value);
+        _placeBid(listingId, msg.value);
     }
 
     /*
@@ -140,35 +56,38 @@ contract SAMContractGas is SAMContractBase {
      * @dev If it is dutch auction, then the price is dutch auction price, if normal auction, then the price is buyNowPrice.
      */
     function buyNow(bytes32 listingId) external payable nonReentrant {
-        listing storage lst = listingRegistry[listingId];
-        require(lst.sellMode != SellMode.Auction, "Auction not support buy now");
-        // Only check for dutch auction, for fixed price there is no duration
-        if (lst.sellMode == SellMode.DutchAuction) {
-            require(block.timestamp >= lst.startTime, "The auction haven't start");
-            require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
-        }
-        require(msg.sender != lst.seller, "Buyer cannot be seller");
-
         uint256 price = getPrice(listingId);
-
         // For BNB, the value need to larger then the price + fee
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
         require(msg.value >= price + fee, "Not enough funds to buy");
 
-        totalEscrowAmount += price;
+        _buyNow(listingId, price);
+    }
 
-        uint256 sellerAmount = price;
-        if (_checkRoyalties(lst.hostContract)) {
-            sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, price);
-        }
+    /// Check base function definition
+    function _processFee(uint256 price) internal override {
+        uint256 fee = (price * feeRate) / FEE_RATE_BASE;
+        payable(revenueAddress).transfer(fee);
+        revenueAmount += fee;
+    }
 
-        addrTokens[lst.seller].claimableAmount += sellerAmount;
-        revenueAmount += msg.value - price;
-        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
+    // Escrow the gas to the contract, using _amount instead of msg.value
+    // because msg.value may include the fee.
+    function _depositToken(uint256 _amount) internal override {
+        addrTokens[msg.sender] += _amount;
+        totalEscrowAmount += _amount;
+    }
 
-        emit BuyNow(listingId, msg.sender, price);
-
-        _removeListing(listingId, lst.seller);
+    /// Check base function definition
+    function _transferToken(
+        address from,
+        address to,
+        uint256 _amount
+    ) internal override {
+        require(addrTokens[from] >= _amount, "The locked amount is not enough");
+        payable(to).transfer(_amount);
+        addrTokens[from] -= _amount;
+        totalEscrowAmount -= _amount;
     }
 
     /*
@@ -187,43 +106,9 @@ contract SAMContractGas is SAMContractBase {
 
         uint256 fee = (bid.price * feeRate) / FEE_RATE_BASE;
         require(msg.value >= fee, "Not enough gas to pay the fee");
-        revenueAmount += msg.value;
 
-        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
-
-        uint256 sellerAmount = bid.price;
-        if (_checkRoyalties(lst.hostContract)) {
-            sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, bid.price);
-        }
-
-        addrTokens[msg.sender].lockedAmount -= bid.price;
-        addrTokens[lst.seller].claimableAmount += sellerAmount;
-
-        emit ClaimNFT(bid.listingId, biddingId, msg.sender);
-
-        _removeListing(bid.listingId, lst.seller);
+        _claimNft(biddingId, bid, lst);
     }
 
-    /*
-     * @notice The NFT seller or failed bidder can claim the token back.
-     * @dev All the available token under his account will be claimed.
-     */
-    function claimBalance() external nonReentrant {
-        require(addrTokens[msg.sender].claimableAmount > 0, "The claimableAmount is zero");
-        payable(msg.sender).transfer(addrTokens[msg.sender].claimableAmount);
-
-        emit ClaimBalance(msg.sender, addrTokens[msg.sender].claimableAmount);
-
-        totalEscrowAmount -= addrTokens[msg.sender].claimableAmount;
-        addrTokens[msg.sender].claimableAmount = 0;
-    }
-
-    /*
-     * @notice Owner to withdraw revenue from the contract.
-     */
-    function revenueSweep() external onlyOwner {
-        require(revenueAmount > 0, "No revenue to sweep");
-        payable(msg.sender).transfer(revenueAmount);
-        revenueAmount = 0;
-    }
+    
 }
