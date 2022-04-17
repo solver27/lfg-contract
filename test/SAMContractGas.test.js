@@ -91,7 +91,7 @@ describe("SAMContractGas", function () {
 
     await LFGNFT.approve(SAMContractGas.address, 1, { from: accounts[2] });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
     await SAMContractGas.addListing(
@@ -154,7 +154,7 @@ describe("SAMContractGas", function () {
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.isAbove(
       parseInt(balanceOfAccount2.toString()),
-      10001999337036928800000
+      10001994337036928800000
     );
 
     let account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
@@ -178,7 +178,7 @@ describe("SAMContractGas", function () {
       from: accounts[2],
     });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     await SAMContractGas.addListing(
       LFGNFT.address,
       account2TokenIds[0],
@@ -263,7 +263,7 @@ describe("SAMContractGas", function () {
     balanceOfAccount4 = await web3.eth.getBalance(accounts[4]);
     assert.isAbove(
       parseInt(balanceOfAccount4.toString()),
-      9999999700078170000000
+      9999999000078170000000
     );
 
     const biddingIds = await SAMContractGas.biddingOfAddr(accounts[3]);
@@ -280,9 +280,9 @@ describe("SAMContractGas", function () {
       SAMContractGas.claimNft(biddingsOfAddr5[0]["id"], { from: accounts[5] })
     ).to.be.revertedWith("The bidding period haven't complete");
 
-    const today = Math.round(new Date() / 1000);
+    latestBlock = await hre.ethers.provider.getBlock("latest");
     await hre.network.provider.send("evm_setNextBlockTimestamp", [
-      today + 3601 * 24,
+      latestBlock["timestamp"] + 3601 * 24,
     ]);
     await hre.network.provider.send("evm_mine");
 
@@ -304,7 +304,7 @@ describe("SAMContractGas", function () {
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.isAbove(
       parseInt(balanceOfAccount2.toString()),
-      10003499037036928800000
+      10003494037036928800000
     );
 
     // Account 3 bid failed, should be auto refunded
@@ -316,7 +316,7 @@ describe("SAMContractGas", function () {
     console.log("Balance of account 3 ", balanceOfAccount3.toString());
     assert.isAbove(
       parseInt(balanceOfAccount3.toString()),
-      9999999480008170000000
+      9999996480008170000000
     );
 
     let revenueAmount = await SAMContractGas.revenueAmount();
@@ -338,7 +338,7 @@ describe("SAMContractGas", function () {
       from: accounts[2],
     });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     await SAMContractGas.addListing(
       LFGNFT.address,
       account2TokenIds[0],
@@ -360,9 +360,9 @@ describe("SAMContractGas", function () {
       SAMContractGas.removeListing(listingId, { from: accounts[2] })
     ).to.be.revertedWith("The listing haven't expired");
 
-    const today = Math.round(new Date() / 1000);
+    latestBlock = await hre.ethers.provider.getBlock("latest");
     await hre.network.provider.send("evm_setNextBlockTimestamp", [
-      today + 3601 * 48,
+      latestBlock["timestamp"] + 3601 * 48,
     ]);
     await hre.network.provider.send("evm_mine");
 
@@ -436,7 +436,7 @@ describe("SAMContractGas", function () {
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
     assert.isAbove(
       parseInt(balanceOfAccount2.toString()),
-      10004498037036928800000
+      10004493037036928800000
     );
 
     listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
@@ -469,7 +469,7 @@ describe("SAMContractGas", function () {
       from: accounts[2],
     });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
     await SAMContractGas.addListing(
@@ -546,7 +546,7 @@ describe("SAMContractGas", function () {
 
     await LFGFireNFT.approve(SAMContractGas.address, 1, { from: accounts[2] });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
     await expect(

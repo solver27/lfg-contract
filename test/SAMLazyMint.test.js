@@ -81,7 +81,7 @@ describe("SAMLazyMint", function () {
       from: accounts[2],
     });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
     await SAMLazyMint.addCollectionListing(
@@ -165,7 +165,7 @@ describe("SAMLazyMint", function () {
   //     from: accounts[2],
   //   });
 
-  //   const latestBlock = await hre.ethers.provider.getBlock("latest");
+  //   let latestBlock = await hre.ethers.provider.getBlock("latest");
   //   await SAMLazyMint.addListing(
   //     LFGNFT.address,
   //     account2TokenIds[0],
@@ -216,9 +216,9 @@ describe("SAMLazyMint", function () {
   //     SAMLazyMint.claimNft(biddings[0], { from: accounts[3] })
   //   ).to.be.revertedWith("The bidding period haven't complete");
 
-  //   const today = Math.round(new Date() / 1000);
+  //   let latestBlock["timestamp"] = Math.round(new Date() / 1000);
   //   await hre.network.provider.send("evm_setNextBlockTimestamp", [
-  //     today + 3601 * 24,
+  //     latestBlock["timestamp"] + 3601 * 24,
   //   ]);
   //   await hre.network.provider.send("evm_mine");
 
@@ -268,7 +268,7 @@ describe("SAMLazyMint", function () {
   //     from: accounts[2],
   //   });
 
-  //   const latestBlock = await hre.ethers.provider.getBlock("latest");
+  //   let latestBlock = await hre.ethers.provider.getBlock("latest");
   //   await SAMLazyMint.addListing(
   //     LFGNFT.address,
   //     account2TokenIds[0],
@@ -290,9 +290,9 @@ describe("SAMLazyMint", function () {
   //     SAMLazyMint.removeListing(listingId, { from: accounts[2] })
   //   ).to.be.revertedWith("The listing haven't expired");
 
-  //   const today = Math.round(new Date() / 1000);
+  //   let latestBlock["timestamp"] = Math.round(new Date() / 1000);
   //   await hre.network.provider.send("evm_setNextBlockTimestamp", [
-  //     today + 3601 * 48,
+  //     latestBlock["timestamp"] + 3601 * 48,
   //   ]);
   //   await hre.network.provider.send("evm_mine");
 
@@ -403,7 +403,7 @@ describe("SAMLazyMint", function () {
   //     from: accounts[2],
   //   });
 
-  //   const latestBlock = await hre.ethers.provider.getBlock("latest");
+  //   let latestBlock = await hre.ethers.provider.getBlock("latest");
   //   console.log("latestBlock ", latestBlock);
 
   //   await SAMLazyMint.addListing(

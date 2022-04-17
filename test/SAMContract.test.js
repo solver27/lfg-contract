@@ -100,7 +100,7 @@ describe("SAMContract", function () {
 
     await LFGNFT.approve(SAMContract.address, 1, { from: accounts[2] });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
     await SAMContract.addListing(
@@ -179,7 +179,7 @@ describe("SAMContract", function () {
       from: accounts[2],
     });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[0],
@@ -249,9 +249,9 @@ describe("SAMContract", function () {
       SAMContract.claimNft(biddingsOfAddr5[0], { from: accounts[5] })
     ).to.be.revertedWith("The bidding period haven't complete");
 
-    const today = Math.round(new Date() / 1000);
+    latestBlock = await hre.ethers.provider.getBlock("latest");
     await hre.network.provider.send("evm_setNextBlockTimestamp", [
-      today + 3601 * 24,
+      latestBlock["timestamp"] + 3601 * 24,
     ]);
     await hre.network.provider.send("evm_mine");
 
@@ -302,7 +302,7 @@ describe("SAMContract", function () {
       from: accounts[2],
     });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[0],
@@ -326,9 +326,9 @@ describe("SAMContract", function () {
       SAMContract.removeListing(listingId, { from: accounts[2] })
     ).to.be.revertedWith("The listing haven't expired");
 
-    const today = Math.round(new Date() / 1000);
+    latestBlock = await hre.ethers.provider.getBlock("latest");
     await hre.network.provider.send("evm_setNextBlockTimestamp", [
-      today + 3601 * 48,
+      latestBlock["timestamp"] + 3601 * 48,
     ]);
     await hre.network.provider.send("evm_mine");
 
@@ -442,7 +442,7 @@ describe("SAMContract", function () {
       from: accounts[2],
     });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
     await SAMContract.addListing(
@@ -529,7 +529,7 @@ describe("SAMContract", function () {
 
     await LFGFireNFT.approve(SAMContract.address, 1, { from: accounts[2] });
 
-    const latestBlock = await hre.ethers.provider.getBlock("latest");
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
     console.log("latestBlock ", latestBlock);
 
     await SAMContract.addListing(

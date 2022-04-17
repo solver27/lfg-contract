@@ -9,21 +9,16 @@ require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-ethers");
 require("@nomiclabs/hardhat-truffle5");
 require("hardhat-typechain");
-require('hardhat-contract-sizer');
+require("hardhat-contract-sizer");
 
-//if (!process.env.MNEMONICS) throw new Error("MNEMONICS missing from .env file");
-if (!process.env.MUMBAI_PRIVKEY)
-  throw new Error("MUMBAI_PRIVKEY missing from .env file");
-// if (!process.env.MAINNET_PRIVKEY)
-//   throw new Error("MAINNET_PRIVKEY missing from .env file");
-
-//const mnemonics = process.env.MNEMONICS;
+if (!process.env.MUMBAI_PRIVKEY) throw new Error("MUMBAI_PRIVKEY missing from .env file");
+if (!process.env.MAINNET_PRIVKEY) throw new Error("MAINNET_PRIVKEY missing from .env file");
 
 module.exports = {
-  defaultNetwork: "localhost",
+  defaultNetwork: "hardhat",
   networks: {
-      localhost: {
-        url: `http://127.0.0.1:8545`,
+    localhost: {
+      url: `http://127.0.0.1:8545`,
     },
 
     // hardhat: {
@@ -61,13 +56,13 @@ module.exports = {
     },
   },
   etherscan: {
-    apiKey: process.env.BSCSCAN_API
+    apiKey: process.env.BSCSCAN_API,
   },
   paths: {
     artifacts: "./artifacts",
     cache: "./cache",
     sources: "./contracts",
-    tests: "./tests",
+    tests: "./test",
   },
   solidity: {
     compilers: [
@@ -99,8 +94,7 @@ module.exports = {
     disambiguatePaths: false,
     runOnCompile: true,
     strict: true,
-    only: ['SAM*'],
+    only: ["SAM*"],
   },
 };
 
-//export default config;
