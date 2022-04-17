@@ -7,7 +7,6 @@ pragma solidity ^0.8.0;
 
 import "./interfaces/IERC2981.sol";
 import "./SAMContractBase.sol";
-import "hardhat/console.sol";
 
 contract SAMContractGas is SAMContractBase {
     constructor(

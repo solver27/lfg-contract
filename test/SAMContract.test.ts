@@ -507,11 +507,12 @@ describe("SAMContract", function () {
     assert.equal(revenueBalance.toString(), "1197500");
   });
 
-  it("test burn token when fire NFT was sold", async function () {
+  it("test burn token when fire NFT was sold by fixed price", async function () {
     // Top up burn contract
     await LFGToken.transfer(BurnToken.address, "100000000000000000000000", {
       from: minter,
     });
+    // set burn rate to 10%
     await BurnToken.setBurnRate(1000, { from: minter });
     await SAMContract.setFireNftContract(LFGFireNFT.address, { from: minter });
     await SAMContract.setBurnTokenContract(BurnToken.address, { from: minter });
@@ -586,6 +587,66 @@ describe("SAMContract", function () {
     // Check the burn amount
     let totalBurnAmount = await BurnToken.totalBurnAmount();
     assert.equal(totalBurnAmount.toString(), "2000000");
+  });
+
+  it("test burn token when fire NFT was sold by auction", async function () {
+    let supply = await LFGFireNFT.totalSupply();
+    console.log("supply ", supply.toString());
+    let account2TokenIds = await LFGFireNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
+
+    await LFGFireNFT.approve(SAMContract.address, account2TokenIds[0], { from: accounts[2] });
+
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
+    console.log("latestBlock ", latestBlock);
+
+    await SAMContract.addListing(
+      LFGFireNFT.address,
+      account2TokenIds[0],
+      1, // auction
+      "20000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      { from: accounts[2] }
+    );
+
+    let listingResult = await SAMContract.listingOfAddr(accounts[2]);
+    console.log("getListingResult ", JSON.stringify(listingResult));
+    assert.equal(listingResult.length, 1);
+    let listingId = listingResult[0];
+
+    await SAMContract.placeBid(listingId, 30000000, { from: accounts[1] });
+
+    const biddings = await SAMContract.biddingOfAddr(accounts[1]);
+    // Because the bidding was removed if other bidding with higher price
+    assert.equal(biddings.length, 1);
+
+    latestBlock = await hre.ethers.provider.getBlock("latest");
+    await hre.network.provider.send("evm_setNextBlockTimestamp", [
+      latestBlock["timestamp"] + 3601 * 24,
+    ]);
+    await hre.network.provider.send("evm_mine");
+
+    await SAMContract.claimNft(biddings[0], {from : accounts[1]});
+
+    let account1TokenIds = await LFGFireNFT.tokensOfOwner(accounts[1]);
+    console.log("tokenIds of account 1 ", JSON.stringify(account1TokenIds));
+    assert.equal(account1TokenIds[1], "2");
+
+    account2TokenIds = await LFGFireNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account0 ", JSON.stringify(account2TokenIds));
+    assert.equal(account2TokenIds.length, 0);
+
+    // Check on the burn address 1 which is for the burn token contract
+    let burnAddrBal = await LFGToken.balanceOf(burnAddress1);
+    console.log("Burn address balance ", burnAddrBal.toString());
+    assert.equal(burnAddrBal.toString(), "5000000"); // 2000000 + 30000000 * 10% = 2000000 + 30000000
+
+    // Check the burn amount
+    let totalBurnAmount = await BurnToken.totalBurnAmount();
+    assert.equal(totalBurnAmount.toString(), "5000000");
   });
 
   it("test remove listing for fixed price ", async function () {
