@@ -122,6 +122,7 @@ contract SAMContract is SAMContractBase {
         _claimNft(biddingId, bid, lst);
     }
 
+    /// Check base function definition
     function _processFee(uint256 price) internal override {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
         uint256 feeToBurn = (fee * feeBurnRate) / FEE_RATE_BASE;
@@ -133,6 +134,7 @@ contract SAMContract is SAMContractBase {
         totalBurnAmount += feeToBurn;
     }
 
+    /// Check base function definition
     function _depositToken(uint256 _amount) internal override {
         // Using lfgToken.safeTransferFrom(addr, address(this), _amount) will increase
         // contract size for 0.13KB, which will make the contract no deployable.
@@ -141,6 +143,7 @@ contract SAMContract is SAMContractBase {
         totalEscrowAmount += _amount;
     }
 
+    /// Check base function definition
     function _transferToken(
         address from,
         address to,
@@ -153,19 +156,12 @@ contract SAMContract is SAMContractBase {
     }
 
     /*
-     * @notice Set the burn and revenue address, combine into one function to reduece contract size.
+     * @notice Set the burn address, only applicable for this contract which use LFG token.
      * @dev Only callable by owner.
-     * @param _burnAddress: the burn address
-     * @param _revenueAddress: the revenue address
+     * @param _burnAddress: the burn token address
      */
-    function setBurnAndRevenueAddress(address _burnAddress, address _revenueAddress)
-        external
-        onlyOwner
-    {
-        require(_revenueAddress != address(0), "Invalid revenue address");
-
+    function setBurnAddress(address _burnAddress) external onlyOwner {
         burnAddress = _burnAddress;
-        revenueAddress = _revenueAddress;
     }
 
     function setBurnTokenContract(IBurnToken _burnTokenContract) external onlyOwner {

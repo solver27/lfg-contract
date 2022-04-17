@@ -64,10 +64,30 @@ contract SAMContractGas is SAMContractBase {
         _buyNow(listingId, price);
     }
 
+    /// Check base function definition
     function _processFee(uint256 price) internal override {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
         payable(revenueAddress).transfer(fee);
         revenueAmount += fee;
+    }
+
+    // Escrow the gas to the contract, using _amount instead of msg.value
+    // because msg.value may include the fee.
+    function _depositToken(uint256 _amount) internal override {
+        addrTokens[msg.sender] += _amount;
+        totalEscrowAmount += _amount;
+    }
+
+    /// Check base function definition
+    function _transferToken(
+        address from,
+        address to,
+        uint256 _amount
+    ) internal override {
+        require(addrTokens[from] >= _amount, "The locked amount is not enough");
+        payable(to).transfer(_amount);
+        addrTokens[from] -= _amount;
+        totalEscrowAmount -= _amount;
     }
 
     /*
@@ -90,21 +110,5 @@ contract SAMContractGas is SAMContractBase {
         _claimNft(biddingId, bid, lst);
     }
 
-    // Escrow the gas to the contract, using _amount instead of msg.value
-    // because msg.value may include the fee.
-    function _depositToken(uint256 _amount) internal override {
-        addrTokens[msg.sender] += _amount;
-        totalEscrowAmount += _amount;
-    }
-
-    function _transferToken(
-        address from,
-        address to,
-        uint256 _amount
-    ) internal override {
-        require(addrTokens[from] >= _amount, "The locked amount is not enough");
-        payable(to).transfer(_amount);
-        addrTokens[from] -= _amount;
-        totalEscrowAmount -= _amount;
-    }
+    
 }

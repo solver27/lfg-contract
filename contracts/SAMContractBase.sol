@@ -517,7 +517,17 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     }
 
     /*
-     * @notice Process fee which is the revenue, some will burn
+     * @notice Set the revenue address.
+     * @dev Only callable by owner.
+     * @param _revenueAddress: the revenue address
+     */
+    function setRevenueAddress(address _revenueAddress) external onlyOwner {
+        require(_revenueAddress != address(0), "Invalid revenue address");
+        revenueAddress = _revenueAddress;
+    }
+
+    /*
+     * @notice Process fee which is the revenue, some will burn if using LFG token.
      * @param _price: The price of buy or bidding.
      */
     function _processFee(uint256 _price) internal virtual;
