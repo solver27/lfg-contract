@@ -106,9 +106,9 @@ describe("SAMContract", function () {
     await SAMContract.addListing(
       LFGNFT.address,
       account2TokenIds[0],
-      0,
+      0, // Fixed price mode
       "20000000",
-      latestBlock["timestamp"] + 1,
+      0, // Fixed price don't need start time
       3600 * 24,
       0,
       0,
@@ -243,7 +243,7 @@ describe("SAMContract", function () {
     );
     assert.equal(acc3BalanceAfterOverTakeBid.toString(), testDepositAmount);
 
-    const biddingsOfAddr5 = await SAMContract.biddingOfAddr(accounts[5]);
+    let biddingsOfAddr5 = await SAMContract.biddingOfAddr(accounts[5]);
 
     await expect(
       SAMContract.claimNft(biddingsOfAddr5[0], { from: accounts[5] })
@@ -262,6 +262,9 @@ describe("SAMContract", function () {
     await SAMContract.claimNft(biddingsOfAddr5[0], { from: accounts[5] });
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
+
+    biddingsOfAddr5 = await SAMContract.biddingOfAddr(accounts[5]);
+    assert.equal(biddingsOfAddr5.length, 0);
 
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
@@ -284,7 +287,7 @@ describe("SAMContract", function () {
     assert.equal(revenueBalance.toString(), "437500");
   });
 
-  it("test remove listing ", async function () {
+  it("test remove listing", async function () {
     let supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
 

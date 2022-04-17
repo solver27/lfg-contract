@@ -273,7 +273,7 @@ describe("SAMContractGas", function () {
     const biddingDetails = await getBiddingOfAddr(SAMContractGas, accounts[3]);
     assert.equal(biddingDetails.length, 0);
 
-    const biddingsOfAddr5 = await getBiddingOfAddr(SAMContractGas, accounts[5]);
+    let biddingsOfAddr5 = await getBiddingOfAddr(SAMContractGas, accounts[5]);
     console.log("biddingsOfAddr5 ", JSON.stringify(biddingsOfAddr5));
 
     await expect(
@@ -292,6 +292,9 @@ describe("SAMContractGas", function () {
     });
     listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
+
+    biddingsOfAddr5 = await getBiddingOfAddr(SAMContractGas, accounts[5]);
+    assert.equal(biddingsOfAddr5.length, 0);
 
     let account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));

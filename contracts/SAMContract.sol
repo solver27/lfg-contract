@@ -42,38 +42,6 @@ contract SAMContract is SAMContractBase {
         royaltiesFeeRate = 1000; // Default 10% royalties fee.
     }
 
-    function _deduceRoyalties(
-        address _contract,
-        uint256 tokenId,
-        uint256 grossSaleValue
-    ) internal returns (uint256 netSaleAmount) {
-        // Get amount of royalties to pays and recipient
-        (address royaltiesReceiver, uint256 royaltiesAmount) = IERC2981(_contract).royaltyInfo(
-            tokenId,
-            grossSaleValue
-        );
-        // Deduce royalties from sale value
-        uint256 netSaleValue = grossSaleValue - royaltiesAmount;
-        // Transfer royalties to rightholder if not zero
-        if (royaltiesAmount > 0) {
-            uint256 royaltyFee = (royaltiesAmount * royaltiesFeeRate) / FEE_RATE_BASE;
-            if (royaltyFee > 0) {
-                _transferToken(msg.sender, revenueAddress, royaltyFee);
-                revenueAmount += royaltyFee;
-
-                emit RoyaltiesFeePaid(_contract, tokenId, royaltyFee);
-            }
-
-            uint256 payToReceiver = royaltiesAmount - royaltyFee;
-            _transferToken(msg.sender, royaltiesReceiver, payToReceiver);
-
-            // Broadcast royalties payment
-            emit RoyaltiesPaid(_contract, tokenId, payToReceiver);
-        }
-
-        return netSaleValue;
-    }
-
     /*
      * @notice Update the burn fee rate from the burn amount
      * @dev Only callable by owner.
@@ -90,45 +58,7 @@ contract SAMContract is SAMContractBase {
      * @dev The bidding price must higher than previous price.
      */
     function placeBid(bytes32 listingId, uint256 price) external nonReentrant {
-        listing storage lst = listingRegistry[listingId];
-        require(lst.sellMode == SellMode.Auction, "Can only bid for listing on auction");
-        require(block.timestamp >= lst.startTime, "The auction hasn't started yet");
-        require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
-        require(msg.sender != lst.seller, "Bidder cannot be seller");
-
-        uint256 minPrice = lst.price;
-
-        if (lst.biddingId != 0) {
-            minPrice = biddingRegistry[lst.biddingId].price;
-        }
-
-        require(price > minPrice, "Bid price too low");
-
-        // this is a lower price bid before, need to return Token back to the buyer
-        if (lst.biddingId != 0) {
-            address olderBidder = biddingRegistry[lst.biddingId].bidder;
-            _transferToken(olderBidder, olderBidder, biddingRegistry[lst.biddingId].price);
-            _removeBidding(lst.biddingId, olderBidder);
-        }
-
-        _depositToken(msg.sender, price);
-
-        bytes32 biddingId = keccak256(
-            abi.encodePacked(operationNonce, lst.hostContract, lst.tokenId)
-        );
-
-        biddingRegistry[biddingId].bidder = msg.sender;
-        biddingRegistry[biddingId].listingId = listingId;
-        biddingRegistry[biddingId].price = price;
-        biddingRegistry[biddingId].timestamp = block.timestamp;
-
-        operationNonce++;
-
-        lst.biddingId = biddingId;
-
-        addrBiddingIds[msg.sender].push(biddingId);
-
-        emit BiddingPlaced(biddingId, listingId, price);
+        _placeBid(listingId, price);
     }
 
     /*
@@ -162,37 +92,12 @@ contract SAMContract is SAMContractBase {
      * @dev If it is dutch auction, then the price is dutch auction price, if normal auction, then the price is buyNowPrice.
      */
     function buyNow(bytes32 listingId) external nonReentrant {
-        listing storage lst = listingRegistry[listingId];
-        require(lst.sellMode != SellMode.Auction, "Auction not support buy now");
-        // Only check for dutch auction, for fixed price there is no duration
-        if (lst.sellMode == SellMode.DutchAuction) {
-            require(block.timestamp >= lst.startTime, "The auction haven't start");
-            require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
-        }
-        require(msg.sender != lst.seller, "Buyer cannot be seller");
-
         uint256 price = getPrice(listingId);
+        address hostContract = _buyNow(listingId, price);
 
-        _processFee(msg.sender, price);
-
-        // Deposit the tokens to market place contract.
-        _depositToken(msg.sender, price);
-
-        uint256 sellerAmount = price;
-        if (_checkRoyalties(lst.hostContract)) {
-            sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, price);
+        if (hostContract == fireNftContractAddress) {
+            burnTokenContract.burn(price);
         }
-
-        _transferToken(msg.sender, lst.seller, sellerAmount);
-        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
-
-        if (lst.hostContract == fireNftContractAddress) {
-            _burnTokenOnFireNft(price);
-        }
-
-        emit BuyNow(listingId, msg.sender, price);
-
-        _removeListing(listingId, lst.seller);
     }
 
     /*
@@ -209,41 +114,30 @@ contract SAMContract is SAMContractBase {
             "The bidding period haven't complete"
         );
 
-        _processFee(msg.sender, bid.price);
-        _transferNft(msg.sender, lst.hostContract, lst.tokenId);
-
-        uint256 sellerAmount = bid.price;
-        if (_checkRoyalties(lst.hostContract)) {
-            sellerAmount = _deduceRoyalties(lst.hostContract, lst.tokenId, bid.price);
-        }
-
-        _transferToken(msg.sender, lst.seller, sellerAmount);
-
+        // Use the bid.price before _claimNft, because the bid will be deleted in _claimNft.
         if (lst.hostContract == fireNftContractAddress) {
-            _burnTokenOnFireNft(bid.price);
+            burnTokenContract.burn(bid.price);
         }
 
-        emit ClaimNFT(bid.listingId, biddingId, msg.sender);
-
-        _removeListing(bid.listingId, lst.seller);
+        _claimNft(biddingId, bid, lst);
     }
 
-    function _processFee(address buyer, uint256 price) internal {
+    function _processFee(uint256 price) internal override {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
         uint256 feeToBurn = (fee * feeBurnRate) / FEE_RATE_BASE;
         uint256 revenue = fee - feeToBurn;
-        SafeERC20.safeTransferFrom(lfgToken, buyer, revenueAddress, revenue);
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, revenueAddress, revenue);
         revenueAmount += revenue;
 
-        SafeERC20.safeTransferFrom(lfgToken, buyer, burnAddress, feeToBurn);
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, burnAddress, feeToBurn);
         totalBurnAmount += feeToBurn;
     }
 
-    function _depositToken(address addr, uint256 _amount) internal {
+    function _depositToken(uint256 _amount) internal override {
         // Using lfgToken.safeTransferFrom(addr, address(this), _amount) will increase
         // contract size for 0.13KB, which will make the contract no deployable.
-        SafeERC20.safeTransferFrom(lfgToken, addr, address(this), _amount);
-        addrTokens[addr] += _amount;
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, address(this), _amount);
+        addrTokens[msg.sender] += _amount;
         totalEscrowAmount += _amount;
     }
 
@@ -251,7 +145,7 @@ contract SAMContract is SAMContractBase {
         address from,
         address to,
         uint256 _amount
-    ) internal {
+    ) internal override {
         require(addrTokens[from] >= _amount, "The locked amount is not enough");
         SafeERC20.safeTransfer(lfgToken, to, _amount);
         addrTokens[from] -= _amount;
@@ -276,9 +170,5 @@ contract SAMContract is SAMContractBase {
 
     function setBurnTokenContract(IBurnToken _burnTokenContract) external onlyOwner {
         burnTokenContract = _burnTokenContract;
-    }
-
-    function _burnTokenOnFireNft(uint256 price) internal {
-        burnTokenContract.burn(price);
     }
 }
