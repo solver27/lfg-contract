@@ -34,6 +34,8 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
 
     event ListingRemoved(bytes32 indexed listingId, address indexed sender);
 
+    event BiddingRemoved(bytes32 indexed biddingId, address indexed sender);
+
     event BiddingPlaced(bytes32 indexed biddingId, bytes32 listingId, uint256 price);
 
     event BuyNow(bytes32 indexed listingId, address indexed buyer, uint256 price);
@@ -91,6 +93,12 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
     // The hosting NFT contract
     LFGNFT1155 public nftContract;
 
+    // The revenue address
+    address public revenueAddress;
+
+    // Total revenue amount
+    uint256 public revenueAmount;
+
     /*
      * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
      * @dev Only the token owner can call, because need to transfer the ownership of the token to marketplace contract.
@@ -121,19 +129,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         // create the token, but not mint it
         uint256 tokenId = nftContract.create(msg.sender, 0, _collectionTag);
 
-        bytes32 listingId = keccak256(
-            abi.encodePacked(
-                operationNonce,
-                _collectionTag,
-                tokenId,
-                _sellMode,
-                _price,
-                _startTime,
-                _duration,
-                _discountInterval,
-                _discountAmount
-            )
-        );
+        bytes32 listingId = keccak256(abi.encodePacked(operationNonce, _collectionTag, tokenId));
 
         listingRegistry[listingId].id = listingId;
         listingRegistry[listingId].seller = msg.sender;
@@ -163,7 +159,116 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         );
     }
 
-    function _mintToBuyer(address _buyer, uint256 tokenId, bytes memory data) internal {
+    function _buyNow(bytes32 listingId) internal {
+        listing storage lst = listingRegistry[listingId];
+        require(lst.sellMode != SellMode.Auction, "Auction not support buy now");
+        // Only check for dutch auction, for fixed price there is no duration
+        if (lst.sellMode == SellMode.DutchAuction) {
+            require(block.timestamp >= lst.startTime, "The auction haven't start");
+            require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
+        }
+        require(msg.sender != lst.seller, "Buyer cannot be seller");
+
+        uint256 price = getPrice(listingId);
+
+        _processFee(price);
+
+        // Deposit the tokens to market place contract.
+        _depositToken(price);
+
+        uint256 sellerAmount = price;
+
+        _transferToken(msg.sender, lst.seller, sellerAmount);
+
+        _mintToBuyer(msg.sender, lst.tokenId, lst.collectionTag);
+
+        emit BuyNow(listingId, msg.sender, price);
+
+        _removeListing(listingId, lst.seller);
+    }
+
+    function _placeBid(bytes32 listingId, uint256 price) internal {
+        listing storage lst = listingRegistry[listingId];
+        require(lst.sellMode == SellMode.Auction, "Can only bid for listing on auction");
+        require(block.timestamp >= lst.startTime, "The auction haven't start");
+        require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
+        require(msg.sender != lst.seller, "Bidder cannot be seller");
+
+        uint256 minPrice = lst.price;
+        // The last element is the current highest price
+        if (lst.biddingIds.length > 0) {
+            bytes32 lastBiddingId = lst.biddingIds[lst.biddingIds.length - 1];
+            minPrice = biddingRegistry[lastBiddingId].price;
+        }
+
+        require(price > minPrice, "Bid price too low");
+
+        _depositToken(price);
+
+        bytes32 biddingId = keccak256(abi.encodePacked(operationNonce, lst.tokenId, price));
+
+        biddingRegistry[biddingId].id = biddingId;
+        biddingRegistry[biddingId].bidder = msg.sender;
+        biddingRegistry[biddingId].listingId = listingId;
+        biddingRegistry[biddingId].price = price;
+        biddingRegistry[biddingId].timestamp = block.timestamp;
+
+        operationNonce++;
+
+        lst.biddingIds.push(biddingId);
+
+        addrBiddingIds[msg.sender].push(biddingId);
+
+        emit BiddingPlaced(biddingId, listingId, price);
+    }
+
+    function _claimNft(bytes32 biddingId) internal {
+        bidding storage bid = biddingRegistry[biddingId];
+        require(bid.bidder == msg.sender, "Only bidder can claim NFT");
+
+        listing storage lst = listingRegistry[bid.listingId];
+        require(
+            lst.startTime + lst.duration < block.timestamp,
+            "The bidding period haven't complete"
+        );
+        for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
+            bytes32 tmpId = lst.biddingIds[i];
+            if (biddingRegistry[tmpId].price > bid.price) {
+                require(false, "The bidding is not the highest price");
+            }
+        }
+
+        _processFee(bid.price);
+
+        uint256 sellerAmount = bid.price;
+
+        _transferToken(msg.sender, lst.seller, sellerAmount);
+
+        _mintToBuyer(msg.sender, lst.tokenId, lst.collectionTag);
+
+        emit ClaimNFT(lst.id, biddingId, msg.sender);
+
+        // Refund the failed bidder
+        for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
+            bytes32 tmpId = lst.biddingIds[i];
+            if (tmpId != biddingId) {
+                _transferToken(
+                    biddingRegistry[tmpId].bidder,
+                    biddingRegistry[tmpId].bidder,
+                    biddingRegistry[tmpId].price
+                );
+            }
+        }
+
+        _removeListing(lst.id, lst.seller);
+        _removeBidding(biddingId, bid.bidder);
+    }
+
+    function _mintToBuyer(
+        address _buyer,
+        uint256 tokenId,
+        bytes memory data
+    ) internal {
         nftContract.mint(_buyer, tokenId, 1, data);
 
         emit MintToBuyer(_buyer, tokenId, data);
@@ -180,7 +285,7 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
      */
     function getPrice(bytes32 listingId) public view returns (uint256) {
         listing storage lst = listingRegistry[listingId];
-        require(lst.startTime > 0, "The listing doesn't exist");
+        require(lst.price > 0, "The listing doesn't exist");
 
         if (lst.sellMode == SellMode.DutchAuction) {
             uint256 timeElapsed;
@@ -210,21 +315,34 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         return addrBiddingIds[addr];
     }
 
-    function _removeListing(bytes32 listingId, address seller) internal {
-        uint256 length = addrListingIds[seller].length;
+    function _removeItemFromArray(bytes32 listingId, bytes32[] storage arrayOfIds) internal {
+        uint256 length = arrayOfIds.length;
         for (uint256 index = 0; index < length; ++index) {
             // Move the last element to the index need to remove
-            if (addrListingIds[seller][index] == listingId && index != length - 1) {
-                addrListingIds[seller][index] = addrListingIds[seller][length - 1];
+            if (arrayOfIds[index] == listingId && index != length - 1) {
+                arrayOfIds[index] = arrayOfIds[length - 1];
             }
         }
         // Remove the last element
-        addrListingIds[seller].pop();
+        arrayOfIds.pop();
+    }
+
+    function _removeListing(bytes32 listingId, address seller) internal {
+        _removeItemFromArray(listingId, addrListingIds[seller]);
 
         // Delete from the mapping
         delete listingRegistry[listingId];
 
         emit ListingRemoved(listingId, seller);
+    }
+
+    function _removeBidding(bytes32 biddingId, address bidder) internal {
+        _removeItemFromArray(biddingId, addrBiddingIds[bidder]);
+
+        // Delete from the mapping
+        delete biddingRegistry[biddingId];
+
+        emit BiddingRemoved(biddingId, bidder);
     }
 
     /*
@@ -234,7 +352,11 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
      */
     function removeListing(bytes32 listingId) external nonReentrant {
         listing storage lst = listingRegistry[listingId];
-        require(lst.startTime + lst.duration < block.timestamp, "The listing haven't expired");
+        // For fixed price sell, there is no duration limit,
+        // so user should be remove it any time before it is sold.
+        if (lst.sellMode != SellMode.FixedPrice) {
+            require(lst.startTime + lst.duration < block.timestamp, "The listing haven't expired");
+        }
         require(lst.seller == msg.sender, "Only seller can remove");
         require(lst.biddingIds.length == 0, "Already received bidding, cannot close");
 
@@ -250,4 +372,29 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
         require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
         feeRate = _feeRate;
     }
+
+    /*
+     * @notice Process fee which is the revenue, some will burn if using LFG token.
+     * @param _price: The price of buy or bidding.
+     */
+    function _processFee(uint256 _price) internal virtual;
+
+    /*
+     * @notice User deposit the token for bidding, which will under escrow
+     * @param _amount: The amount to deposit.
+     */
+    function _depositToken(uint256 _amount) internal virtual;
+
+    /*
+     * @notice Transfer token from one address to another address, if they
+               are the same, means refund the escrowed token
+     * @param _from: The token transfer from.
+     * @param _to: The token transfer to.
+     * @param _from: The amount to transfer.
+     */
+    function _transferToken(
+        address _from,
+        address _to,
+        uint256 _amount
+    ) internal virtual;
 }
