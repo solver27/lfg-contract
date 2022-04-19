@@ -455,7 +455,7 @@ describe("SAMContractGas", function () {
     let supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    await LFGNFT.mint(1, accounts[2], { from: owner });
+    await LFGNFT.mint(1, accounts[2], { from: accounts[2] });
 
     supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
@@ -466,7 +466,7 @@ describe("SAMContractGas", function () {
 
     // 20% Royalties
     await LFGNFT.setRoyalty(account2TokenIds[lastIndex], accounts[6], 2000, {
-      from: owner,
+      from: accounts[2],
     });
 
     await LFGNFT.approve(SAMContractGas.address, account2TokenIds[lastIndex], {

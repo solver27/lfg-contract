@@ -171,6 +171,7 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
 
     function setRoyalty(uint256 _tokenId, address _receiver, uint16 _royalty) external {
         require(creators[_tokenId] == msg.sender, "NFT: Invalid creator");
+        require(creators[_tokenId] == ownerOf(_tokenId), "NFT: Cannot set royalty after transfer");
         require(_receiver != address(0), "NFT: invalid royalty receiver");
         require(_royalty <= MAX_ROYALTY, "NFT: Invalid royalty percentage");
 
