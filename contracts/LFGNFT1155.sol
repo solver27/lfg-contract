@@ -11,7 +11,8 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     using Strings for uint256;
 
     event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
-    event SetCreatorWhitelist(address indexed creator, bool isWhitelist);
+
+    event CreateCollection(address indexed addr, bytes data);
 
     uint256 private _currentTokenID = 0;
     mapping(uint256 => address) public creators;
@@ -34,8 +35,6 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
 
     // tokens in collection
     mapping(bytes => Collection) public collections;
-
-    mapping(address => bool) public creatorWhiteLists;
 
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 2000;
@@ -93,9 +92,34 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
 
     function createCollection(bytes calldata _data) external {
         require(_data.length > 0, "Invalid collection name");
-        require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
         require(collections[_data].initiator == address(0), "Collection already created");
         collections[_data].initiator = msg.sender;
+
+        emit CreateCollection(msg.sender, _data);
+    }
+
+    function _create(
+        address _to,
+        uint256 _initialSupply,
+        bytes calldata _data
+    ) internal returns (uint256) {
+        uint256 _id = _getNextTokenID();
+        _incrementTokenTypeId();
+        creators[_id] = msg.sender;
+
+        if (_initialSupply > 0) {
+            require(_to != address(0), "NFT: invalid address");
+            _mint(_to, _id, _initialSupply, _data);
+        }
+
+        tokenSupply[_id] = _initialSupply;
+
+        if (_data.length > 0) {
+            // Add Id to collections.
+            collections[_data].ids.push(_id);
+        }
+
+        return _id;
     }
 
     /**
@@ -111,8 +135,6 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256 _initialSupply,
         bytes calldata _data
     ) external returns (uint256) {
-        require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
-
         if (_data.length > 0) {
             require(collections[_data].initiator != address(0), "Collection doesn't exist");
             // If the collection already exists, then only the same user can add to the collection.
@@ -122,22 +144,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
             );
         }
 
-        uint256 _id = _getNextTokenID();
-        _incrementTokenTypeId();
-        creators[_id] = msg.sender;
-
-        if (_initialSupply > 0) {
-            _mint(_to, _id, _initialSupply, _data);
-        }
-
-        tokenSupply[_id] = _initialSupply;
-
-        if (_data.length > 0) {
-            // Add Id to collections.
-            collections[_data].ids.push(_id);
-        }
-
-        return _id;
+        return _create(_to, _initialSupply, _data);
     }
 
     function createBatch(
@@ -146,7 +153,6 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256 _initialSupply,
         bytes calldata _data
     ) external returns (uint256[] memory) {
-        require(creatorWhiteLists[msg.sender], "Address is not in creator whitelist");
         require(_quantity > 0, "Invalid quantity");
 
         if (_data.length > 0) {
@@ -160,21 +166,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
 
         uint256[] memory ids = new uint256[](_quantity);
         for (uint256 i = 0; i < _quantity; i++) {
-            uint256 _id = _getNextTokenID();
-            _incrementTokenTypeId();
-            creators[_id] = msg.sender;
-
-            if (_initialSupply > 0) {
-                _mint(_to, _id, _initialSupply, _data);
-            }
-            tokenSupply[_id] = _initialSupply;
-
-            if (_data.length > 0) {
-                // Add Id to collections.
-                collections[_data].ids.push(_id);
-            }
-
-            ids[i] = _id;
+            ids[i] = _create(_to, _initialSupply, _data);
         }
         return ids;
     }
@@ -192,8 +184,10 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256 _quantity,
         bytes memory _data
     ) public creatorOnly(_id) {
+        require(_to != address(0), "NFT: invalid address");
         require(_id > 0, "Invalid token id");
         require(_quantity > 0, "Invalid quantity");
+
         _mint(_to, _id, _quantity, _data);
         tokenSupply[_id] += _quantity;
     }
@@ -211,10 +205,16 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256[] memory _quantities,
         bytes memory _data
     ) public {
+        require(_to != address(0), "NFT: invalid address");
+
         for (uint256 i = 0; i < _ids.length; i++) {
             uint256 _id = _ids[i];
             require(creators[_id] == msg.sender, "ERC1155Tradable#batchMint: ONLY_CREATOR_ALLOWED");
+
             uint256 quantity = _quantities[i];
+            require(_id > 0, "Invalid token id");
+            require(quantity > 0, "Invalid quantity");
+
             tokenSupply[_id] += quantity;
         }
         _mintBatch(_to, _ids, _quantities, _data);
@@ -276,12 +276,6 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         returns (uint256[] memory)
     {
         return collections[_collectionTag].ids;
-    }
-
-    function setCreatorWhitelist(address _addr, bool _isWhitelist) external onlyOwner {
-        creatorWhiteLists[_addr] = _isWhitelist;
-
-        emit SetCreatorWhitelist(_addr, _isWhitelist);
     }
 
     function uri(uint256 _id) public view virtual override returns (string memory) {

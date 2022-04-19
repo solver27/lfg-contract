@@ -43,8 +43,6 @@ describe("SAMContractGas1155", function () {
 
       LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
 
-      await LFGNFT1155.setCreatorWhitelist(accounts[2], true, { from: owner });
-
       NftWhiteList = await NftWhiteListArt.new(owner);
 
       SAMContractGas = await SAMContractGasArt.new(
@@ -92,6 +90,7 @@ describe("SAMContractGas1155", function () {
     await SAMContractGas.addListing(
       LFGNFT1155.address,
       id,
+      1, // copies
       0,
       "2000000000000000000",
       latestBlock["timestamp"] + 1,

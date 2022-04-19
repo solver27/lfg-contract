@@ -28,6 +28,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         address indexed sender,
         address indexed hostContract,
         uint256 tokenId,
+        uint256 copyIndex,
         SellMode sellMode,
         uint256 _price,
         uint256 startTime,
@@ -151,6 +152,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     function _addListing(
         address _hostContract,
         uint256 _tokenId,
+        uint256 _copies,
         SellMode _sellMode,
         uint256 _price,
         uint256 _startTime,
@@ -169,6 +171,8 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
             require(_duration > 0, "Invalid duration");
         }
 
+        require(_copies > 0, "The NFT copies should larger than 0");
+
         if (_sellMode == SellMode.FixedPrice) {
             require(_price > 0, "Invalid fixed price");
         } else if (_sellMode == SellMode.Auction) {
@@ -182,35 +186,40 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
             );
         }
 
-        bytes32 listingId = keccak256(abi.encodePacked(operationNonce, _hostContract, _tokenId));
+        _depositNft(msg.sender, _hostContract, _tokenId, _copies);
 
-        _depositNft(msg.sender, _hostContract, _tokenId);
+        for (uint256 index = 0; index < _copies; ++index) {
+            bytes32 listingId = keccak256(
+                abi.encodePacked(operationNonce, _hostContract, _tokenId)
+            );
 
-        listingRegistry[listingId].seller = msg.sender;
-        listingRegistry[listingId].hostContract = _hostContract;
-        listingRegistry[listingId].tokenId = _tokenId;
-        listingRegistry[listingId].sellMode = _sellMode;
-        listingRegistry[listingId].price = _price;
-        listingRegistry[listingId].startTime = _startTime;
-        listingRegistry[listingId].duration = _duration;
-        listingRegistry[listingId].discountInterval = _discountInterval;
-        listingRegistry[listingId].discountAmount = _discountAmount;
-        operationNonce++;
+            listingRegistry[listingId].seller = msg.sender;
+            listingRegistry[listingId].hostContract = _hostContract;
+            listingRegistry[listingId].tokenId = _tokenId;
+            listingRegistry[listingId].sellMode = _sellMode;
+            listingRegistry[listingId].price = _price;
+            listingRegistry[listingId].startTime = _startTime;
+            listingRegistry[listingId].duration = _duration;
+            listingRegistry[listingId].discountInterval = _discountInterval;
+            listingRegistry[listingId].discountAmount = _discountAmount;
+            operationNonce++;
 
-        addrListingIds[msg.sender].push(listingId);
+            addrListingIds[msg.sender].push(listingId);
 
-        emit ListingPlaced(
-            listingId,
-            msg.sender,
-            _hostContract,
-            _tokenId,
-            _sellMode,
-            _price,
-            _startTime,
-            _duration,
-            _discountInterval,
-            _discountAmount
-        );
+            emit ListingPlaced(
+                listingId,
+                msg.sender,
+                _hostContract,
+                _tokenId,
+                index,
+                _sellMode,
+                _price,
+                _startTime,
+                _duration,
+                _discountInterval,
+                _discountAmount
+            );
+        }
     }
 
     function _placeBid(bytes32 listingId, uint256 price) internal {
@@ -433,14 +442,16 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     function _depositNft(
         address from,
         address _hostContract,
-        uint256 _tokenId
+        uint256 _tokenId,
+        uint256 _copies
     ) internal {
         if (IERC165(_hostContract).supportsInterface(type(IERC721).interfaceId)) {
+            require(_copies == 1, "ERC721 doesn't support copies");
             ERC721 nftContract = ERC721(_hostContract);
             nftContract.safeTransferFrom(from, address(this), _tokenId);
         } else if (IERC165(_hostContract).supportsInterface(type(IERC1155).interfaceId)) {
             ERC1155 nftContract = ERC1155(_hostContract);
-            nftContract.safeTransferFrom(from, address(this), _tokenId, 1, "0x0");
+            nftContract.safeTransferFrom(from, address(this), _tokenId, _copies, "0x0");
         }
     }
 

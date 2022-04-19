@@ -9,14 +9,13 @@ const { createImportSpecifier } = require("typescript");
 describe("NftAirdrop", function () {
   let LFGFireNFT = null;
   let NftAirdrop = null;
-  let accounts = ["", ""],
-    minter;
+  let accounts = ["", ""];
 
   const airDropNftAmount = 1;
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], minter] = await web3.eth.getAccounts();
+      [accounts[0], accounts[1]] = await web3.eth.getAccounts();
       LFGFireNFT = await LFGFireNFTArt.new();
       NftAirdrop = await NftAirdropArt.new(LFGFireNFT.address);
       await LFGFireNFT.setMinter(NftAirdrop.address, true);
