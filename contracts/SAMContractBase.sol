@@ -133,7 +133,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         revenueAddress = _revenueAddress;
 
         feeRate = 250; // 2.5%
-        royaltiesFeeRate = 1000; // Default 10% royalties fee.
+        royaltiesFeeRate = 500; // Default 5% royalties fee.
     }
 
     /// @notice Checks if NFT contract implements the ERC-2981 interface

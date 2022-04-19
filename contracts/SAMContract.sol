@@ -39,7 +39,6 @@ contract SAMContract is SAMContractBase {
 
         feeRate = 125; // 1.25%
         feeBurnRate = 5000; // 50%
-        royaltiesFeeRate = 1000; // Default 10% royalties fee.
     }
 
     /*
