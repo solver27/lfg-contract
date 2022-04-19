@@ -1,22 +1,20 @@
-const { assert, expect } = require("chai");
+const {assert, expect} = require("chai");
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const {web3} = require("hardhat");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const BN = require("bn.js");
-const { createImportSpecifier } = require("typescript");
+const {createImportSpecifier} = require("typescript");
 
 describe("LFGNFT1155", function () {
   let LFGNFT1155 = null;
   let accounts = ["", "", "", ""],
     owner;
 
-  const baseURI =
-    "https://gateway.pinata.cloud/ipfs/QmWNPuFyQLa2EjGPVAhA8veFc6yuTwNVEeGRgkCKk4NW5Q/";
+  const baseURI = "https://gateway.pinata.cloud/ipfs/QmWNPuFyQLa2EjGPVAhA8veFc6yuTwNVEeGRgkCKk4NW5Q/";
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], accounts[2], accounts[3], owner] =
-        await web3.eth.getAccounts();
+      [accounts[0], accounts[1], accounts[2], accounts[3], owner] = await web3.eth.getAccounts();
       LFGNFT1155 = await LFGNFT1155Art.new(owner, baseURI);
     } catch (err) {
       console.log(err);
@@ -44,6 +42,15 @@ describe("LFGNFT1155", function () {
     let id = result["logs"][0]["args"]["id"];
     console.log("id: ", id.toString());
 
+    let royaltyInfo = await LFGNFT1155.royaltyInfo(id, 10000);
+    console.log("royaltyInfo ", JSON.stringify(royaltyInfo));
+
+    // Before set royalty, it should be 0
+    assert.equal(royaltyInfo["royaltyAmount"], "0");
+
+    // set 10% royalty
+    await LFGNFT1155.setRoyalty(id, accounts[1], 1000, {from: accounts[1]});
+
     let tokenUri = await LFGNFT1155.uri(id);
     console.log("Token 1 uri: ", tokenUri);
     assert.equal(tokenUri, baseURI + "1");
@@ -52,6 +59,7 @@ describe("LFGNFT1155", function () {
     console.log("nftBalance of account 1 ", nftBalance1.toString());
     assert.equal(nftBalance1.toString(), "10");
 
+    // mint another 10
     await LFGNFT1155.mint(accounts[2], id, 10, collectionTag, {
       from: accounts[1],
     });
@@ -62,16 +70,9 @@ describe("LFGNFT1155", function () {
     const token1Supply = await LFGNFT1155.tokenSupply(id);
     assert.equal(token1Supply.toString(), "20");
 
-    await LFGNFT1155.safeTransferFrom(
-      accounts[2],
-      accounts[3],
-      id,
-      5,
-      collectionTag,
-      {
-        from: accounts[2],
-      }
-    );
+    await LFGNFT1155.safeTransferFrom(accounts[2], accounts[3], id, 5, collectionTag, {
+      from: accounts[2],
+    });
 
     nftBalance2 = await LFGNFT1155.balanceOf(accounts[2], id);
     console.log("nftBalance of account 2 ", nftBalance2.toString());
@@ -84,18 +85,14 @@ describe("LFGNFT1155", function () {
     // let account1TokenIds = await LFGNFT1155.tokensOfOwner(accounts[1]);
     // console.log("tokenIds of account1 ", JSON.stringify(account1TokenIds));
 
-    let royaltyInfo = await LFGNFT1155.royaltyInfo(id, 10000);
-    console.log("royaltyInfo ", JSON.stringify(royaltyInfo));
+    
+    await expect(LFGNFT1155.setRoyalty(id, accounts[1], 1000, {from: accounts[2]})).to.be.revertedWith(
+      "NFT: Invalid creator"
+    );
 
-    // Before set royalty, it should be 0
-    assert.equal(royaltyInfo["royaltyAmount"], "0");
-
-    // set 10% royalty
-    await expect(
-      LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: owner })
-    ).to.be.revertedWith("NFT: Invalid creator");
-
-    await LFGNFT1155.setRoyalty(id, accounts[1], 1000, { from: accounts[1] });
+    await expect(LFGNFT1155.setRoyalty(id, accounts[1], 1000, {from: accounts[1]})).to.be.revertedWith(
+      "NFT: Cannot set royalty after transfer"
+    );
 
     royaltyInfo = await LFGNFT1155.royaltyInfo(id, 10000);
     console.log("royaltyInfo ", JSON.stringify(royaltyInfo));
@@ -127,9 +124,7 @@ describe("LFGNFT1155", function () {
     let getCollections = await LFGNFT1155.collections(collectionTagPok);
     console.log("Collections: ", JSON.stringify(getCollections));
 
-    let collectionTokens = await LFGNFT1155.getCollectionTokens(
-      collectionTagPok
-    );
+    let collectionTokens = await LFGNFT1155.getCollectionTokens(collectionTagPok);
     console.log("Collections tokens: ", JSON.stringify(collectionTokens));
 
     // try to create the same token again.
