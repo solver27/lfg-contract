@@ -245,6 +245,10 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint16 _royalty
     ) external {
         require(creators[_tokenId] == msg.sender, "NFT: Invalid creator");
+        require(
+            balanceOf(msg.sender, _tokenId) == tokenSupply[_tokenId],
+            "NFT: Cannot set royalty after transfer"
+        );
         require(_receiver != address(0), "NFT: invalid royalty receiver");
         require(_royalty <= MAX_ROYALTY, "NFT: Invalid royalty percentage");
 
