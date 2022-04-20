@@ -104,10 +104,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     uint256 public constant MAXIMUM_ROYALTIES_FEE_RATE = 5000;
 
     // The royalties fee rate
-    uint256 public royaltiesFeeRate;
+    // uint256 public royaltiesFeeRate;
 
     // The Fire NFT contract address
-    address public fireNftContractAddress;
+    // address public fireNftContractAddress;
 
     // The nft whitelist contract
     INftWhiteList public nftWhiteListContract;
@@ -136,7 +136,11 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         //revenueAddress = _revenueAddress;
 
         feeRate = 250; // 2.5%
-        royaltiesFeeRate = 500; // Default 5% royalties fee.
+        // royaltiesFeeRate = 500; // Default 5% royalties fee.
+    }
+
+    function setSAMConfig(address _address) external onlyOwner {
+        samConfig = ISAMConfig(_address);
     }
 
     /// @notice Checks if NFT contract implements the ERC-2981 interface
@@ -280,7 +284,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 netSaleValue = grossSaleValue - royaltiesAmount;
         // Transfer royalties to rightholder if not zero
         if (royaltiesAmount > 0) {
-            uint256 royaltyFee = (royaltiesAmount * royaltiesFeeRate) / FEE_RATE_BASE;
+            uint256 royaltyFee = (royaltiesAmount * samConfig.getRoyalityFeeRate()) / FEE_RATE_BASE;
             if (royaltyFee > 0) {
                 _transferToken(msg.sender, samConfig.getRevenueAddress(), royaltyFee);
                 revenueAmount += royaltyFee;
@@ -476,10 +480,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
      * @dev Only callable by owner.
      * @param _address: the NFT contract to whitelist
      */
-    function setFireNftContract(address _address) external onlyOwner {
-        require(_address != address(0), "Invalid address");
-        fireNftContractAddress = _address;
-    }
+    // function setFireNftContract(address _address) external onlyOwner {
+    //     require(_address != address(0), "Invalid address");
+    //     fireNftContractAddress = _address;
+    // }
 
     /**
      * Always returns `IERC721Receiver.onERC721Received.selector`.
@@ -521,13 +525,13 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
      * @param _feeRate: the fee rate the contract charge.
      * @param _royaltiesFeeRate: the royalties fee rate the contract charge.
      */
-    function updateFeeRate(uint256 _feeRate, uint256 _royaltiesFeeRate) external onlyOwner {
-        require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
-        require(_royaltiesFeeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
+    // function updateFeeRate(uint256 _feeRate, uint256 _royaltiesFeeRate) external onlyOwner {
+    //     require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
+    //     require(_royaltiesFeeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
 
-        feeRate = _feeRate;
-        royaltiesFeeRate = _royaltiesFeeRate;
-    }
+    //     feeRate = _feeRate;
+    //     royaltiesFeeRate = _royaltiesFeeRate;
+    // }
 
     /*
      * @notice Set the revenue address.

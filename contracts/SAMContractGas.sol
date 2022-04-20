@@ -38,7 +38,7 @@ contract SAMContractGas is SAMContractBase {
         uint256 _discountInterval,
         uint256 _discountAmount
     ) external nonReentrant {
-        require(_hostContract != fireNftContractAddress, "FireNFT can only sell for LFG");
+        require(_hostContract != samConfig.getFireNftAddress(), "FireNFT can only sell for LFG");
         _addListing(
             _hostContract,
             _tokenId,

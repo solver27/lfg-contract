@@ -95,7 +95,7 @@ contract SAMContract is SAMContractBase {
         uint256 price = getPrice(listingId);
         address hostContract = _buyNow(listingId, price);
 
-        if (hostContract == fireNftContractAddress) {
+        if (hostContract == samConfig.getFireNftAddress()) {
             burnTokenContract.burn(price);
         }
     }
@@ -115,7 +115,7 @@ contract SAMContract is SAMContractBase {
         );
 
         // Use the bid.price before _claimNft, because the bid will be deleted in _claimNft.
-        if (lst.hostContract == fireNftContractAddress) {
+        if (lst.hostContract == samConfig.getFireNftAddress()) {
             burnTokenContract.burn(bid.price);
         }
 

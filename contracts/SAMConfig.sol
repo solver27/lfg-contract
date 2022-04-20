@@ -8,7 +8,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ISAMConfig.sol";
 
-contract SAMConfig is Ownable, ISAMConfig {
+abstract contract SAMConfig is Ownable, ISAMConfig {
     // The royalties fee rate
     uint256 public royaltiesFeeRate;
 
@@ -31,6 +31,46 @@ contract SAMConfig is Ownable, ISAMConfig {
     uint256 public maxDuration;
 
     function setRoyaltiesFeeRate(uint256 rate) external onlyOwner {
-        
+        royaltiesFeeRate = rate;        
+    }
+
+    function setFireNftContractAddress(address _address) external  onlyOwner {
+        fireNftContractAddress = _address;
+    }
+
+    function setRevenueAddress(address _address) external onlyOwner {
+        revenueAddress = _address;
+    }
+
+    function setBurnAddress(address _address) external onlyOwner {
+        burnAddress = _address;
+    }
+
+    function setFeeBurnRate(uint256 _rate) external onlyOwner {
+        feeBurnRate = _rate;
+    }
+
+    function setMinDuration(uint256 _duration) external onlyOwner {
+        minDuration = _duration;        
+    }
+
+    function setMaxDuration(uint256 _duration) external onlyOwner {
+        maxDuration = _duration;
+    }
+
+    function getBurnAddress() external view returns (address) {
+        return burnAddress;
+    }
+
+    function getRevenueAddress() external view returns (address) {
+        return revenueAddress;
+    }
+
+    function getFireNftAddress() external view returns (address) {
+        return fireNftContractAddress;
+    }
+
+    function getRoyalityFeeRate() external view returns (uint256) {
+        return royaltiesFeeRate;
     }
 }
