@@ -31,13 +31,15 @@ contract SAMContract is SAMContractBase {
         address _owner,
         IERC20 _lfgToken,
         INftWhiteList _nftWhiteList,
-        address _burnAddress
+        address _burnAddress,
+        ISAMConfig _samConfig
     ) SAMContractBase(_owner, _nftWhiteList) {
         lfgToken = _lfgToken;
         burnAddress = _burnAddress;
 
         feeRate = 125; // 1.25%
         feeBurnRate = 5000; // 50%
+        samConfig = _samConfig;
     }
 
     /*

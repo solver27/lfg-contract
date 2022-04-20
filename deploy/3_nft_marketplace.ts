@@ -34,7 +34,7 @@ async function deploy() {
     "0x53c54E27DEc0Fa40ac02B032c6766Ce8E04A2A70", // lfgToken.address
     nftWhiteList.address, // Whitelist contract
     "0xf197c5bC13383ef49511303065d39b33DC063f72", // burn address
-    // "0x08955A4e6b4A543FE68479F5482739Ff4D625A16" // Revenue address
+    samConfigContract.address // SAMConfig address
   );
 
   await samContract.deployed();

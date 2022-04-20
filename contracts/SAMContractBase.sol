@@ -139,10 +139,6 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         // royaltiesFeeRate = 500; // Default 5% royalties fee.
     }
 
-    function setSAMConfig(address _address) external onlyOwner {
-        samConfig = ISAMConfig(_address);
-    }
-
     /// @notice Checks if NFT contract implements the ERC-2981 interface
     /// @param _contract - the address of the NFT contract to query
     /// @return true if ERC-2981 interface is supported, false otherwise
