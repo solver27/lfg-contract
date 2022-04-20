@@ -14,6 +14,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/IERC2981.sol";
 import "./interfaces/INftWhiteList.sol";
+import "./interfaces/ISAMConfig.sol";
 
 /// The contract is abstract so it cannnot be deployed.
 abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
@@ -111,8 +112,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     // The nft whitelist contract
     INftWhiteList public nftWhiteListContract;
 
+    ISAMConfig public samConfig;
+
     // The revenue address
-    address public revenueAddress;
+    //address public revenueAddress;
 
     // Total revenue amount
     uint256 public revenueAmount;
@@ -123,15 +126,14 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
 
     constructor(
         address _owner,
-        INftWhiteList _nftWhiteList,
-        address _revenueAddress
+        INftWhiteList _nftWhiteList
     ) {
         require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
         nftWhiteListContract = _nftWhiteList;
 
         require(_owner != address(0), "Invalid revenue address");
-        revenueAddress = _revenueAddress;
+        //revenueAddress = _revenueAddress;
 
         feeRate = 250; // 2.5%
         royaltiesFeeRate = 500; // Default 5% royalties fee.
@@ -280,7 +282,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         if (royaltiesAmount > 0) {
             uint256 royaltyFee = (royaltiesAmount * royaltiesFeeRate) / FEE_RATE_BASE;
             if (royaltyFee > 0) {
-                _transferToken(msg.sender, revenueAddress, royaltyFee);
+                _transferToken(msg.sender, samConfig.getRevenueAddress(), royaltyFee);
                 revenueAmount += royaltyFee;
 
                 emit RoyaltiesFeePaid(_contract, tokenId, royaltyFee);
@@ -532,10 +534,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
      * @dev Only callable by owner.
      * @param _revenueAddress: the revenue address
      */
-    function setRevenueAddress(address _revenueAddress) external onlyOwner {
-        require(_revenueAddress != address(0), "Invalid revenue address");
-        revenueAddress = _revenueAddress;
-    }
+    // function setRevenueAddress(address _revenueAddress) external onlyOwner {
+    //     require(_revenueAddress != address(0), "Invalid revenue address");
+    //     revenueAddress = _revenueAddress;
+    // }
 
     /*
      * @notice Process fee which is the revenue, some will burn if using LFG token.

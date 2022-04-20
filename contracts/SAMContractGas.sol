@@ -11,9 +11,8 @@ import "./SAMContractBase.sol";
 contract SAMContractGas is SAMContractBase {
     constructor(
         address _owner,
-        INftWhiteList _nftWhiteList,
-        address _revenueAddress
-    ) SAMContractBase(_owner, _nftWhiteList, _revenueAddress) {
+        INftWhiteList _nftWhiteList
+    ) SAMContractBase(_owner, _nftWhiteList) {
     }
 
     /*
@@ -69,7 +68,7 @@ contract SAMContractGas is SAMContractBase {
     /// Check base function definition
     function _processFee(uint256 price) internal override {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
-        payable(revenueAddress).transfer(fee);
+        payable(samConfig.getRevenueAddress()).transfer(fee);
         revenueAmount += fee;
     }
 

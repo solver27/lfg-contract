@@ -31,9 +31,8 @@ contract SAMContract is SAMContractBase {
         address _owner,
         IERC20 _lfgToken,
         INftWhiteList _nftWhiteList,
-        address _burnAddress,
-        address _revenueAddress
-    ) SAMContractBase(_owner, _nftWhiteList, _revenueAddress) {
+        address _burnAddress
+    ) SAMContractBase(_owner, _nftWhiteList) {
         lfgToken = _lfgToken;
         burnAddress = _burnAddress;
 
@@ -128,7 +127,7 @@ contract SAMContract is SAMContractBase {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
         uint256 feeToBurn = (fee * feeBurnRate) / FEE_RATE_BASE;
         uint256 revenue = fee - feeToBurn;
-        SafeERC20.safeTransferFrom(lfgToken, msg.sender, revenueAddress, revenue);
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, samConfig.getRevenueAddress(), revenue);
         revenueAmount += revenue;
 
         SafeERC20.safeTransferFrom(lfgToken, msg.sender, burnAddress, feeToBurn);
