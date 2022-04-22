@@ -1,11 +1,12 @@
-const { assert, expect } = require("chai");
+const {assert, expect} = require("chai");
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const {web3} = require("hardhat");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
+const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMContractGasArt = hre.artifacts.require("SAMContractGas");
 const BN = require("bn.js");
-const { createImportSpecifier } = require("typescript");
+const {createImportSpecifier} = require("typescript");
 
 async function getBiddingOfAddr(samContract, addr) {
   const biddingIds = await samContract.biddingOfAddr(addr);
@@ -27,6 +28,8 @@ describe("SAMContractGas1155", function () {
     owner,
     revenueAddress;
 
+  let burnAddress = "0x0000000000000000000000000000000000000000";
+
   before("Deploy contract", async function () {
     try {
       [
@@ -45,11 +48,9 @@ describe("SAMContractGas1155", function () {
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
-      SAMContractGas = await SAMContractGasArt.new(
-        owner,
-        NftWhiteList.address,
-        revenueAddress
-      );
+      SAMConfig = await SAMConfigArt.new(owner, revenueAddress, burnAddress);
+
+      SAMContractGas = await SAMContractGasArt.new(owner, NftWhiteList.address, SAMConfig.address);
 
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT1155.address, true, {
@@ -57,7 +58,9 @@ describe("SAMContractGas1155", function () {
       });
 
       // 2.5% fee, 10% royalties fee.
-      await SAMContractGas.updateFeeRate(250, 1000, { from: owner });
+      // await SAMContractGas.updateFeeRate(250, 1000, { from: owner });
+      await SAMContractGas.updateFeeRate(250, {from: owner});
+      await SAMConfig.setRoyaltiesFeeRate(1000);
     } catch (err) {
       console.log(err);
     }
@@ -97,7 +100,7 @@ describe("SAMContractGas1155", function () {
       3600 * 24,
       0,
       0,
-      { from: accounts[2] }
+      {from: accounts[2]}
     );
 
     let listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
@@ -120,10 +123,7 @@ describe("SAMContractGas1155", function () {
     await hre.network.provider.send("evm_mine");
 
     let nftBalanceOfAccount1 = await LFGNFT1155.balanceOf(accounts[1], id);
-    console.log(
-      "balance of of account 1 ",
-      JSON.stringify(nftBalanceOfAccount1)
-    );
+    console.log("balance of of account 1 ", JSON.stringify(nftBalanceOfAccount1));
     assert.equal(nftBalanceOfAccount1, "1");
 
     nftBalanceOfAccount2 = await LFGNFT1155.balanceOf(accounts[2], id);
@@ -132,10 +132,7 @@ describe("SAMContractGas1155", function () {
 
     let balanceOfAccount1 = await web3.eth.getBalance(accounts[1]);
     console.log("Balance of account 1 ", balanceOfAccount1.toString());
-    assert.isBelow(
-      parseInt(balanceOfAccount1.toString()),
-      9998000000000000000000
-    );
+    assert.isBelow(parseInt(balanceOfAccount1.toString()), 9998000000000000000000);
 
     let balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
@@ -148,10 +145,7 @@ describe("SAMContractGas1155", function () {
 
     balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(
-      parseInt(balanceOfAccount2.toString()),
-      10001899057036928800000
-    );
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001899057036928800000);
 
     account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));

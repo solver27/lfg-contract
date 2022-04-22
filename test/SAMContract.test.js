@@ -6,6 +6,7 @@ const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
+const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMContractArt = hre.artifacts.require("SAMContract");
 const BurnTokenArt = hre.artifacts.require("BurnToken");
 const BN = require("bn.js");
@@ -16,10 +17,11 @@ describe("SAMContract", function () {
   let LFGNFT = null;
   let LFGFireNFT = null;
   let NftWhiteList = null;
+  let SAMConfig = null;
   let SAMContract = null;
   let BurnToken = null;
   let accounts = ["", "", "", "", "", "", ""],
-    minter,
+    owner,
     burnAddress,
     revenueAddress,
     burnAddress1;
@@ -34,26 +36,22 @@ describe("SAMContract", function () {
         accounts[4],
         accounts[5],
         accounts[6],
-        minter,
+        owner,
         burnAddress,
         revenueAddress,
         burnAddress1,
       ] = await web3.eth.getAccounts();
-      LFGToken = await LFGTokenArt.new("LFG Token", "LFG", "1000000000000000000000000000", minter);
+      LFGToken = await LFGTokenArt.new("LFG Token", "LFG", "1000000000000000000000000000", owner);
 
-      LFGNFT = await LFGNFTArt.new(minter);
+      LFGNFT = await LFGNFTArt.new(owner);
 
       LFGFireNFT = await LFGFireNFTArt.new();
 
-      NftWhiteList = await NftWhiteListArt.new(minter);
+      NftWhiteList = await NftWhiteListArt.new(owner);
 
-      SAMContract = await SAMContractArt.new(
-        minter,
-        LFGToken.address,
-        NftWhiteList.address,
-        burnAddress,
-        revenueAddress
-      );
+      SAMConfig = await SAMConfigArt.new(owner, revenueAddress, burnAddress);
+
+      SAMContract = await SAMContractArt.new(owner, LFGToken.address, NftWhiteList.address, SAMConfig.address);
 
       // make sure the default fee rate is discounted.
       const feeRateResult = await SAMContract.feeRate();
@@ -61,18 +59,18 @@ describe("SAMContract", function () {
 
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT.address, true, {
-        from: minter,
+        from: owner,
       });
       await NftWhiteList.setNftContractWhitelist(LFGFireNFT.address, true, {
-        from: minter,
+        from: owner,
       });
 
       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
-      await SAMContract.updateFeeRate(250, 1000, {from: minter});
-      await SAMContract.updateBurnFeeRate(5000, {from: minter});
+      await SAMContract.updateFeeRate(250, {from: owner});
+      await SAMConfig.setRoyaltiesFeeRate(1000, {from: owner});
 
-      BurnToken = await BurnTokenArt.new(minter, LFGToken.address, burnAddress1);
-      await BurnToken.setOperator(SAMContract.address, true, {from: minter});
+      BurnToken = await BurnTokenArt.new(owner, LFGToken.address, burnAddress1);
+      await BurnToken.setOperator(SAMContract.address, true, {from: owner});
     } catch (err) {
       console.log(err);
     }
@@ -82,7 +80,7 @@ describe("SAMContract", function () {
     let supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    await LFGNFT.mint(2, accounts[2], {from: minter});
+    await LFGNFT.mint(2, accounts[2], {from: owner});
 
     supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
@@ -128,7 +126,7 @@ describe("SAMContract", function () {
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount, {from: minter});
+    await LFGToken.transfer(accounts[1], testDepositAmount, {from: owner});
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());
@@ -207,7 +205,7 @@ describe("SAMContract", function () {
     const testDepositAmount = "100000000000000000000000";
     for (let accountId = 3; accountId < 6; ++accountId) {
       await LFGToken.transfer(accounts[accountId], testDepositAmount, {
-        from: minter,
+        from: owner,
       });
       await LFGToken.approve(SAMContract.address, testDepositAmount, {
         from: accounts[accountId],
@@ -292,7 +290,7 @@ describe("SAMContract", function () {
     let supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    await LFGNFT.mint(2, accounts[2], {from: minter});
+    await LFGNFT.mint(2, accounts[2], {from: owner});
 
     supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
@@ -469,7 +467,7 @@ describe("SAMContract", function () {
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount, {from: minter});
+    await LFGToken.transfer(accounts[1], testDepositAmount, {from: owner});
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());
@@ -514,14 +512,16 @@ describe("SAMContract", function () {
   });
 
   it("test burn token when fire NFT was sold by fixed price", async function () {
+    console.log("BurnToken ", BurnToken.address);
     // Top up burn contract
     await LFGToken.transfer(BurnToken.address, "100000000000000000000000", {
-      from: minter,
+      from: owner,
     });
     // set burn rate to 10%
-    await BurnToken.setBurnRate(1000, {from: minter});
-    await SAMContract.setFireNftContract(LFGFireNFT.address, {from: minter});
-    await SAMContract.setBurnTokenContract(BurnToken.address, {from: minter});
+    await BurnToken.setBurnRate(1000, {from: owner});
+    await SAMContract.setBurnTokenContract(BurnToken.address, {from: owner});
+
+    await SAMConfig.setFireNftContractAddress(LFGFireNFT.address, {from: owner});
 
     let supply = await LFGFireNFT.totalSupply();
     console.log("supply ", supply.toString());
@@ -557,7 +557,7 @@ describe("SAMContract", function () {
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount, {from: minter});
+    await LFGToken.transfer(accounts[1], testDepositAmount, {from: owner});
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());

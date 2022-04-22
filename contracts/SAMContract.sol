@@ -13,16 +13,9 @@ import "./SAMContractBase.sol";
 contract SAMContract is SAMContractBase {
     uint256 public constant MAXIMUM_FEE_BURN_RATE = 10000; // maximum burn 100% of the fee
 
-    // The rate of fee to burn
-    uint256 public feeBurnRate;
-
-    // The address to burn token
-    address public burnAddress;
-
     // The total burned token amount
     uint256 public totalBurnAmount;
 
-    //address public burnFromAddress;
     IBurnToken public burnTokenContract;
 
     IERC20 public lfgToken;
@@ -31,25 +24,11 @@ contract SAMContract is SAMContractBase {
         address _owner,
         IERC20 _lfgToken,
         INftWhiteList _nftWhiteList,
-        address _burnAddress,
-        address _revenueAddress
-    ) SAMContractBase(_owner, _nftWhiteList, _revenueAddress) {
+        ISAMConfig _samConfig
+    ) SAMContractBase(_owner, _nftWhiteList, _samConfig) {
         lfgToken = _lfgToken;
-        burnAddress = _burnAddress;
 
         feeRate = 125; // 1.25%
-        feeBurnRate = 5000; // 50%
-    }
-
-    /*
-     * @notice Update the burn fee rate from the burn amount
-     * @dev Only callable by owner.
-     * @param _fee: the fee rate
-     * @param _burnRate: the burn fee rate
-     */
-    function updateBurnFeeRate(uint256 _feeBurnRate) external onlyOwner {
-        require(_feeBurnRate <= FEE_RATE_BASE, "Invalid fee burn rate");
-        feeBurnRate = _feeBurnRate;
     }
 
     /*
@@ -96,7 +75,7 @@ contract SAMContract is SAMContractBase {
         uint256 price = getPrice(listingId);
         address hostContract = _buyNow(listingId, price);
 
-        if (hostContract == fireNftContractAddress) {
+        if (hostContract == samConfig.getFireNftAddress()) {
             burnTokenContract.burn(price);
         }
     }
@@ -116,7 +95,7 @@ contract SAMContract is SAMContractBase {
         );
 
         // Use the bid.price before _claimNft, because the bid will be deleted in _claimNft.
-        if (lst.hostContract == fireNftContractAddress) {
+        if (lst.hostContract == samConfig.getFireNftAddress()) {
             burnTokenContract.burn(bid.price);
         }
 
@@ -126,12 +105,12 @@ contract SAMContract is SAMContractBase {
     /// Check base function definition
     function _processFee(uint256 price) internal override {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
-        uint256 feeToBurn = (fee * feeBurnRate) / FEE_RATE_BASE;
+        uint256 feeToBurn = (fee * samConfig.getFeeBurnRate()) / FEE_RATE_BASE;
         uint256 revenue = fee - feeToBurn;
-        SafeERC20.safeTransferFrom(lfgToken, msg.sender, revenueAddress, revenue);
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, samConfig.getRevenueAddress(), revenue);
         revenueAmount += revenue;
 
-        SafeERC20.safeTransferFrom(lfgToken, msg.sender, burnAddress, feeToBurn);
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, samConfig.getBurnAddress(), feeToBurn);
         totalBurnAmount += feeToBurn;
     }
 
@@ -154,15 +133,6 @@ contract SAMContract is SAMContractBase {
         SafeERC20.safeTransfer(lfgToken, to, _amount);
         addrTokens[from] -= _amount;
         totalEscrowAmount -= _amount;
-    }
-
-    /*
-     * @notice Set the burn address, only applicable for this contract which use LFG token.
-     * @dev Only callable by owner.
-     * @param _burnAddress: the burn token address
-     */
-    function setBurnAddress(address _burnAddress) external onlyOwner {
-        burnAddress = _burnAddress;
     }
 
     function setBurnTokenContract(IBurnToken _burnTokenContract) external onlyOwner {

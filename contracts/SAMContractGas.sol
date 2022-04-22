@@ -12,9 +12,8 @@ contract SAMContractGas is SAMContractBase {
     constructor(
         address _owner,
         INftWhiteList _nftWhiteList,
-        address _revenueAddress
-    ) SAMContractBase(_owner, _nftWhiteList, _revenueAddress) {
-    }
+        ISAMConfig _samConfig
+    ) SAMContractBase(_owner, _nftWhiteList, _samConfig) {}
 
     /*
      * @notice Place bidding for the listing item, only support normal auction.
@@ -39,7 +38,7 @@ contract SAMContractGas is SAMContractBase {
         uint256 _discountInterval,
         uint256 _discountAmount
     ) external nonReentrant {
-        require(_hostContract != fireNftContractAddress, "FireNFT can only sell for LFG");
+        require(_hostContract != samConfig.getFireNftAddress(), "FireNFT can only sell for LFG");
         _addListing(
             _hostContract,
             _tokenId,
@@ -69,7 +68,7 @@ contract SAMContractGas is SAMContractBase {
     /// Check base function definition
     function _processFee(uint256 price) internal override {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
-        payable(revenueAddress).transfer(fee);
+        payable(samConfig.getRevenueAddress()).transfer(fee);
         revenueAmount += fee;
     }
 
@@ -111,6 +110,4 @@ contract SAMContractGas is SAMContractBase {
 
         _claimNft(biddingId, bid, lst);
     }
-
-    
 }

@@ -14,6 +14,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./interfaces/IERC2981.sol";
 import "./interfaces/INftWhiteList.sol";
+import "./interfaces/ISAMConfig.sol";
 
 /// The contract is abstract so it cannnot be deployed.
 abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
@@ -102,17 +103,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     // maximum charge 50% royalty fee
     uint256 public constant MAXIMUM_ROYALTIES_FEE_RATE = 5000;
 
-    // The royalties fee rate
-    uint256 public royaltiesFeeRate;
-
-    // The Fire NFT contract address
-    address public fireNftContractAddress;
-
     // The nft whitelist contract
     INftWhiteList public nftWhiteListContract;
 
-    // The revenue address
-    address public revenueAddress;
+    ISAMConfig public samConfig;
 
     // Total revenue amount
     uint256 public revenueAmount;
@@ -121,20 +115,13 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
 
     uint256 public totalEscrowAmount;
 
-    constructor(
-        address _owner,
-        INftWhiteList _nftWhiteList,
-        address _revenueAddress
-    ) {
+    constructor(address _owner, INftWhiteList _nftWhiteList, ISAMConfig _samConfig) {
         require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
         nftWhiteListContract = _nftWhiteList;
-
-        require(_owner != address(0), "Invalid revenue address");
-        revenueAddress = _revenueAddress;
+        samConfig = _samConfig;
 
         feeRate = 250; // 2.5%
-        royaltiesFeeRate = 500; // Default 5% royalties fee.
     }
 
     /// @notice Checks if NFT contract implements the ERC-2981 interface
@@ -168,7 +155,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         // Fixed price no need to check start time and duration.
         if (_sellMode != SellMode.FixedPrice) {
             require(_startTime >= block.timestamp, "Listing auction start time past already");
-            require(_duration > 0, "Invalid duration");
+            require(
+                _duration >= samConfig.getMinDuration() && _duration <= samConfig.getMaxDuration(),
+                "Invalid duration"
+            );
         }
 
         require(_copies > 0, "The NFT copies should larger than 0");
@@ -278,9 +268,9 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 netSaleValue = grossSaleValue - royaltiesAmount;
         // Transfer royalties to rightholder if not zero
         if (royaltiesAmount > 0) {
-            uint256 royaltyFee = (royaltiesAmount * royaltiesFeeRate) / FEE_RATE_BASE;
+            uint256 royaltyFee = (royaltiesAmount * samConfig.getRoyalityFeeRate()) / FEE_RATE_BASE;
             if (royaltyFee > 0) {
-                _transferToken(msg.sender, revenueAddress, royaltyFee);
+                _transferToken(msg.sender, samConfig.getRevenueAddress(), royaltyFee);
                 revenueAmount += royaltyFee;
 
                 emit RoyaltiesFeePaid(_contract, tokenId, royaltyFee);
@@ -469,16 +459,6 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         }
     }
 
-    /*
-     * @notice Set the Fire NFT contract address, it is a special NFT from gamerse.
-     * @dev Only callable by owner.
-     * @param _address: the NFT contract to whitelist
-     */
-    function setFireNftContract(address _address) external onlyOwner {
-        require(_address != address(0), "Invalid address");
-        fireNftContractAddress = _address;
-    }
-
     /**
      * Always returns `IERC721Receiver.onERC721Received.selector`.
      */
@@ -519,22 +499,9 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
      * @param _feeRate: the fee rate the contract charge.
      * @param _royaltiesFeeRate: the royalties fee rate the contract charge.
      */
-    function updateFeeRate(uint256 _feeRate, uint256 _royaltiesFeeRate) external onlyOwner {
+    function updateFeeRate(uint256 _feeRate) external onlyOwner {
         require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
-        require(_royaltiesFeeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
-
         feeRate = _feeRate;
-        royaltiesFeeRate = _royaltiesFeeRate;
-    }
-
-    /*
-     * @notice Set the revenue address.
-     * @dev Only callable by owner.
-     * @param _revenueAddress: the revenue address
-     */
-    function setRevenueAddress(address _revenueAddress) external onlyOwner {
-        require(_revenueAddress != address(0), "Invalid revenue address");
-        revenueAddress = _revenueAddress;
     }
 
     /*
