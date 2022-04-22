@@ -103,19 +103,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     // maximum charge 50% royalty fee
     uint256 public constant MAXIMUM_ROYALTIES_FEE_RATE = 5000;
 
-    // The royalties fee rate
-    // uint256 public royaltiesFeeRate;
-
-    // The Fire NFT contract address
-    // address public fireNftContractAddress;
-
     // The nft whitelist contract
     INftWhiteList public nftWhiteListContract;
 
     ISAMConfig public samConfig;
-
-    // The revenue address
-    //address public revenueAddress;
 
     // Total revenue amount
     uint256 public revenueAmount;
@@ -124,19 +115,13 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
 
     uint256 public totalEscrowAmount;
 
-    constructor(
-        address _owner,
-        INftWhiteList _nftWhiteList
-    ) {
+    constructor(address _owner, INftWhiteList _nftWhiteList, ISAMConfig _samConfig) {
         require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
         nftWhiteListContract = _nftWhiteList;
-
-        require(_owner != address(0), "Invalid revenue address");
-        //revenueAddress = _revenueAddress;
+        samConfig = _samConfig;
 
         feeRate = 250; // 2.5%
-        // royaltiesFeeRate = 500; // Default 5% royalties fee.
     }
 
     /// @notice Checks if NFT contract implements the ERC-2981 interface
@@ -170,7 +155,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         // Fixed price no need to check start time and duration.
         if (_sellMode != SellMode.FixedPrice) {
             require(_startTime >= block.timestamp, "Listing auction start time past already");
-            require(_duration > 0, "Invalid duration");
+            require(
+                _duration >= samConfig.getMinDuration() && _duration <= samConfig.getMaxDuration(),
+                "Invalid duration"
+            );
         }
 
         require(_copies > 0, "The NFT copies should larger than 0");
@@ -471,16 +459,6 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         }
     }
 
-    /*
-     * @notice Set the Fire NFT contract address, it is a special NFT from gamerse.
-     * @dev Only callable by owner.
-     * @param _address: the NFT contract to whitelist
-     */
-    // function setFireNftContract(address _address) external onlyOwner {
-    //     require(_address != address(0), "Invalid address");
-    //     fireNftContractAddress = _address;
-    // }
-
     /**
      * Always returns `IERC721Receiver.onERC721Received.selector`.
      */
@@ -525,16 +503,6 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
         feeRate = _feeRate;
     }
-
-    /*
-     * @notice Set the revenue address.
-     * @dev Only callable by owner.
-     * @param _revenueAddress: the revenue address
-     */
-    // function setRevenueAddress(address _revenueAddress) external onlyOwner {
-    //     require(_revenueAddress != address(0), "Invalid revenue address");
-    //     revenueAddress = _revenueAddress;
-    // }
 
     /*
      * @notice Process fee which is the revenue, some will burn if using LFG token.

@@ -1,6 +1,6 @@
-const { assert, expect } = require("chai");
+const {assert, expect} = require("chai");
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const {web3} = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
@@ -8,7 +8,7 @@ const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMContractArt = hre.artifacts.require("SAMContract");
 const BurnTokenArt = hre.artifacts.require("BurnToken");
 const BN = require("bn.js");
-const { createImportSpecifier } = require("typescript");
+const {createImportSpecifier} = require("typescript");
 
 describe("SAMContract1155", function () {
   let LFGToken = null;
@@ -38,28 +38,16 @@ describe("SAMContract1155", function () {
         revenueAddress,
         burnAddress1,
       ] = await web3.eth.getAccounts();
-      
-      LFGToken = await LFGTokenArt.new(
-        "LFG Token",
-        "LFG",
-        "1000000000000000000000000000",
-        owner
-      );
+
+      LFGToken = await LFGTokenArt.new("LFG Token", "LFG", "1000000000000000000000000000", owner);
 
       LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
-      SAMConfig = await SAMConfigArt.new(owner);
-      SAMConfig.setRevenueAddress(revenueAddress);
-      SAMConfig.setBurnAddress(burnAddress);
+      SAMConfig = await SAMConfigArt.new(owner, revenueAddress, burnAddress);
 
-      SAMContract = await SAMContractArt.new(
-        owner,
-        LFGToken.address,
-        NftWhiteList.address,
-        SAMConfig.address
-      );
+      SAMContract = await SAMContractArt.new(owner, LFGToken.address, NftWhiteList.address, SAMConfig.address);
 
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT1155.address, true, {
@@ -68,11 +56,10 @@ describe("SAMContract1155", function () {
 
       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
       await SAMContract.updateFeeRate(250, {from: owner});
-      await SAMConfig.setRoyaltiesFeeRate(1000);
-      // await SAMContract.updateBurnFeeRate(5000, { from: owner });
+      await SAMConfig.setRoyaltiesFeeRate(1000, {from: owner});
 
       BurnToken = await BurnTokenArt.new(owner, LFGToken.address, burnAddress1);
-      await BurnToken.setOperator(SAMContract.address, true, { from: owner });
+      await BurnToken.setOperator(SAMContract.address, true, {from: owner});
     } catch (err) {
       console.log(err);
     }
@@ -112,27 +99,21 @@ describe("SAMContract1155", function () {
       3600 * 24,
       0,
       0,
-      { from: accounts[2] }
+      {from: accounts[2]}
     );
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 1);
 
-    let balanceOfMarketplace = await LFGNFT1155.balanceOf(
-      SAMContract.address,
-      id
-    );
-    console.log(
-      "balance of of market place ",
-      JSON.stringify(balanceOfMarketplace)
-    );
+    let balanceOfMarketplace = await LFGNFT1155.balanceOf(SAMContract.address, id);
+    console.log("balance of of market place ", JSON.stringify(balanceOfMarketplace));
     assert.equal(balanceOfMarketplace.toString(), "1");
 
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount, { from: owner });
+    await LFGToken.transfer(accounts[1], testDepositAmount, {from: owner});
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());
@@ -141,21 +122,16 @@ describe("SAMContract1155", function () {
       from: accounts[1],
     });
 
-    await expect(
-      SAMContract.placeBid(listingId, "10000000", { from: accounts[1] })
-    ).to.be.revertedWith("Can only bid for listing on auction");
+    await expect(SAMContract.placeBid(listingId, "10000000", {from: accounts[1]})).to.be.revertedWith(
+      "Can only bid for listing on auction"
+    );
 
-    await expect(
-      SAMContract.buyNow(listingId, { from: accounts[2] })
-    ).to.be.revertedWith("Buyer cannot be seller");
+    await expect(SAMContract.buyNow(listingId, {from: accounts[2]})).to.be.revertedWith("Buyer cannot be seller");
 
-    await SAMContract.buyNow(listingId, { from: accounts[1] });
+    await SAMContract.buyNow(listingId, {from: accounts[1]});
 
     let nftBalanceOfAccount1 = await LFGNFT1155.balanceOf(accounts[1], id);
-    console.log(
-      "balance of of account 1 ",
-      JSON.stringify(nftBalanceOfAccount1)
-    );
+    console.log("balance of of account 1 ", JSON.stringify(nftBalanceOfAccount1));
     assert.equal(nftBalanceOfAccount1, "1");
 
     nftBalanceOfAccount2 = await LFGNFT1155.balanceOf(accounts[2], id);
@@ -176,5 +152,54 @@ describe("SAMContract1155", function () {
     console.log("Burn amount ", burnAmount.toString());
 
     assert.equal(burnAmount.toString(), "250000");
+  });
+
+  it("test add listing with invalid duration", async function () {
+    let nftTokenId = 2;
+    let nftBalanceOfAccount2 = await LFGNFT1155.balanceOf(accounts[2], nftTokenId);
+    console.log("NFT Balance of account 2 ", nftBalanceOfAccount2.toString());
+
+    let supply = await LFGNFT1155.tokenSupply(nftTokenId);
+    console.log("supply ", supply.toString());
+
+    await LFGNFT1155.setApprovalForAll(SAMContract.address, true, {
+      from: accounts[2],
+    });
+
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
+    console.log("latestBlock ", latestBlock);
+
+    await expect(
+      SAMContract.addListing(
+        LFGNFT1155.address,
+        nftTokenId,
+        1, // copies
+        1, // Auction
+        "20000000",
+        latestBlock["timestamp"] + 1,
+        3600 * 23, // The duration too short
+        0,
+        0,
+        {from: accounts[2]}
+      )
+    ).to.be.revertedWith("Invalid duration");
+
+    latestBlock = await hre.ethers.provider.getBlock("latest");
+    console.log("latestBlock ", latestBlock);
+
+    await expect(
+      SAMContract.addListing(
+        LFGNFT1155.address,
+        nftTokenId,
+        1, // copies
+        1, // Auction
+        "20000000",
+        latestBlock["timestamp"] + 1,
+        3600 * 24 * 8, // The duration too long
+        0,
+        0,
+        {from: accounts[2]}
+      )
+    ).to.be.revertedWith("Invalid duration");
   });
 });

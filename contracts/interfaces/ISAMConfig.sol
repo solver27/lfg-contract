@@ -8,4 +8,6 @@ interface ISAMConfig {
     function getFireNftAddress() external view returns (address);
     function getRoyalityFeeRate() external view returns (uint256);
     function getFeeBurnRate() external view returns (uint256);
+    function getMinDuration() external view returns (uint256);
+    function getMaxDuration() external view returns (uint256);
 }

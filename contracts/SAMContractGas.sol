@@ -13,9 +13,7 @@ contract SAMContractGas is SAMContractBase {
         address _owner,
         INftWhiteList _nftWhiteList,
         ISAMConfig _samConfig
-    ) SAMContractBase(_owner, _nftWhiteList) {
-        samConfig = _samConfig;
-    }
+    ) SAMContractBase(_owner, _nftWhiteList, _samConfig) {}
 
     /*
      * @notice Place bidding for the listing item, only support normal auction.
@@ -112,6 +110,4 @@ contract SAMContractGas is SAMContractBase {
 
         _claimNft(biddingId, bid, lst);
     }
-
-    
 }

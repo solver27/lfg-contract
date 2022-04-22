@@ -13,12 +13,6 @@ import "./SAMContractBase.sol";
 contract SAMContract is SAMContractBase {
     uint256 public constant MAXIMUM_FEE_BURN_RATE = 10000; // maximum burn 100% of the fee
 
-    // The rate of fee to burn
-    // uint256 public feeBurnRate;
-
-    // The address to burn token
-    // address public burnAddress;
-
     // The total burned token amount
     uint256 public totalBurnAmount;
 
@@ -32,23 +26,11 @@ contract SAMContract is SAMContractBase {
         IERC20 _lfgToken,
         INftWhiteList _nftWhiteList,
         ISAMConfig _samConfig
-    ) SAMContractBase(_owner, _nftWhiteList) {
+    ) SAMContractBase(_owner, _nftWhiteList, _samConfig) {
         lfgToken = _lfgToken;
 
         feeRate = 125; // 1.25%
-        samConfig = _samConfig;
     }
-
-    /*
-     * @notice Update the burn fee rate from the burn amount
-     * @dev Only callable by owner.
-     * @param _fee: the fee rate
-     * @param _burnRate: the burn fee rate
-     */
-    // function updateBurnFeeRate(uint256 _feeBurnRate) external onlyOwner {
-    //     require(_feeBurnRate <= FEE_RATE_BASE, "Invalid fee burn rate");
-    //     feeBurnRate = _feeBurnRate;
-    // }
 
     /*
      * @notice Place bidding for the listing item, only support normal auction.
@@ -153,15 +135,6 @@ contract SAMContract is SAMContractBase {
         addrTokens[from] -= _amount;
         totalEscrowAmount -= _amount;
     }
-
-    /*
-     * @notice Set the burn address, only applicable for this contract which use LFG token.
-     * @dev Only callable by owner.
-     * @param _burnAddress: the burn token address
-     */
-    // function setBurnAddress(address _burnAddress) external onlyOwner {
-    //     burnAddress = _burnAddress;
-    // }
 
     function setBurnTokenContract(IBurnToken _burnTokenContract) external onlyOwner {
         burnTokenContract = _burnTokenContract;

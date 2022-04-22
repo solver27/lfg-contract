@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-//** NFT Airdrop Contract */
-//** Author Xiao Shengguang : NFT Airdrop Contract 2022.1 */
+//** SAM Config Contract */
+//** Author Xiao Shengguang : SAM Config Contract 2022.4 */
 
 pragma solidity ^0.8.0;
 
@@ -25,10 +25,10 @@ contract SAMConfig is Ownable, ISAMConfig {
     uint256 public feeBurnRate = 5000;
 
     // The minimum duration
-    uint256 public minDuration;
+    uint256 public minDuration = 1 days;
 
     // The maximum duration
-    uint256 public maxDuration;
+    uint256 public maxDuration = 7 days;
 
     event UpdatedRoyaltiesFeeRate(uint256 rate);
     event UpdatedFireNftContractAddress(address addr);
@@ -38,17 +38,32 @@ contract SAMConfig is Ownable, ISAMConfig {
     event UpdatedMinDuration(uint256 duration);
     event UpdatedMaxDuration(uint256 duration);
 
-    function setRoyaltiesFeeRate(uint256 rate) external onlyOwner {
-        royaltiesFeeRate = rate;   
-        emit UpdatedRoyaltiesFeeRate(rate);    
+    constructor(
+        address _owner,
+        address _revenueAddress,
+        address _burnAddress
+    ) {
+        require(_owner != address(0), "Invalid owner address");
+        _transferOwnership(_owner);
+
+        require(_revenueAddress != address(0), "Invalid revenue address");
+        revenueAddress = _revenueAddress;
+
+        burnAddress = _burnAddress;
     }
 
-    function setFireNftContractAddress(address _address) external  onlyOwner {
+    function setRoyaltiesFeeRate(uint256 rate) external onlyOwner {
+        royaltiesFeeRate = rate;
+        emit UpdatedRoyaltiesFeeRate(rate);
+    }
+
+    function setFireNftContractAddress(address _address) external onlyOwner {
         fireNftContractAddress = _address;
         emit UpdatedFireNftContractAddress(_address);
     }
 
     function setRevenueAddress(address _address) external onlyOwner {
+        require(_address != address(0), "Invalid revenue address");
         revenueAddress = _address;
         emit UpdatedRevenueAddress(_address);
     }
@@ -64,32 +79,43 @@ contract SAMConfig is Ownable, ISAMConfig {
     }
 
     function setMinDuration(uint256 _duration) external onlyOwner {
-        minDuration = _duration; 
-        emit UpdatedMinDuration(_duration);       
+        require(_duration > 0 && _duration < maxDuration, "Invalid minimum duration");
+        minDuration = _duration;
+        emit UpdatedMinDuration(_duration);
     }
 
     function setMaxDuration(uint256 _duration) external onlyOwner {
+        require(_duration > minDuration, "Invalid maximum duration");
+
         maxDuration = _duration;
-        emit UpdatedMaxDuration(_duration);     
+        emit UpdatedMaxDuration(_duration);
     }
 
-    function getBurnAddress() external override view returns (address) {
+    function getBurnAddress() external view override returns (address) {
         return burnAddress;
     }
 
-    function getRevenueAddress() external override view returns (address) {
+    function getRevenueAddress() external view override returns (address) {
         return revenueAddress;
     }
 
-    function getFireNftAddress() external override view returns (address) {
+    function getFireNftAddress() external view override returns (address) {
         return fireNftContractAddress;
     }
 
-    function getRoyalityFeeRate() external override view returns (uint256) {
+    function getRoyalityFeeRate() external view override returns (uint256) {
         return royaltiesFeeRate;
     }
 
-    function getFeeBurnRate() external override view returns (uint256) {
+    function getFeeBurnRate() external view override returns (uint256) {
         return feeBurnRate;
+    }
+
+    function getMinDuration() external view override returns (uint256) {
+        return minDuration;
+    }
+
+    function getMaxDuration() external view override returns (uint256) {
+        return maxDuration;
     }
 }
