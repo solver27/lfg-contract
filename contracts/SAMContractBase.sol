@@ -521,13 +521,10 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
      * @param _feeRate: the fee rate the contract charge.
      * @param _royaltiesFeeRate: the royalties fee rate the contract charge.
      */
-    // function updateFeeRate(uint256 _feeRate, uint256 _royaltiesFeeRate) external onlyOwner {
-    //     require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
-    //     require(_royaltiesFeeRate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalty fee rate");
-
-    //     feeRate = _feeRate;
-    //     royaltiesFeeRate = _royaltiesFeeRate;
-    // }
+    function updateFeeRate(uint256 _feeRate) external onlyOwner {
+        require(_feeRate <= MAXIMUM_FEE_RATE, "Invalid fee rate");
+        feeRate = _feeRate;
+    }
 
     /*
      * @notice Set the revenue address.

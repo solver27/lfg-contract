@@ -4,6 +4,7 @@ const { web3 } = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
+const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMContractArt = hre.artifacts.require("SAMContract");
 const BurnTokenArt = hre.artifacts.require("BurnToken");
 const BN = require("bn.js");
@@ -13,6 +14,7 @@ describe("SAMContract1155", function () {
   let LFGToken = null;
   let LFGNFT1155 = null;
   let NftWhiteList = null;
+  let SAMConfig = null;
   let SAMContract = null;
   let BurnToken = null;
   let accounts = ["", "", "", "", "", "", ""],
@@ -36,6 +38,7 @@ describe("SAMContract1155", function () {
         revenueAddress,
         burnAddress1,
       ] = await web3.eth.getAccounts();
+      
       LFGToken = await LFGTokenArt.new(
         "LFG Token",
         "LFG",
@@ -47,12 +50,15 @@ describe("SAMContract1155", function () {
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
+      SAMConfig = await SAMConfigArt.new(owner);
+      SAMConfig.setRevenueAddress(revenueAddress);
+      SAMConfig.setBurnAddress(burnAddress);
+
       SAMContract = await SAMContractArt.new(
         owner,
         LFGToken.address,
         NftWhiteList.address,
-        burnAddress,
-        revenueAddress
+        SAMConfig.address
       );
 
       // This one must call from owner
@@ -61,8 +67,9 @@ describe("SAMContract1155", function () {
       });
 
       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
-      await SAMContract.updateFeeRate(250, 1000, { from: owner });
-      await SAMContract.updateBurnFeeRate(5000, { from: owner });
+      await SAMContract.updateFeeRate(250, {from: owner});
+      await SAMConfig.setRoyaltiesFeeRate(1000);
+      // await SAMContract.updateBurnFeeRate(5000, { from: owner });
 
       BurnToken = await BurnTokenArt.new(owner, LFGToken.address, burnAddress1);
       await BurnToken.setOperator(SAMContract.address, true, { from: owner });
@@ -167,6 +174,7 @@ describe("SAMContract1155", function () {
 
     let burnAmount = await LFGToken.balanceOf(burnAddress);
     console.log("Burn amount ", burnAmount.toString());
+
     assert.equal(burnAmount.toString(), "250000");
   });
 });

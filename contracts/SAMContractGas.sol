@@ -11,8 +11,10 @@ import "./SAMContractBase.sol";
 contract SAMContractGas is SAMContractBase {
     constructor(
         address _owner,
-        INftWhiteList _nftWhiteList
+        INftWhiteList _nftWhiteList,
+        ISAMConfig _samConfig
     ) SAMContractBase(_owner, _nftWhiteList) {
+        samConfig = _samConfig;
     }
 
     /*

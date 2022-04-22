@@ -4,6 +4,7 @@ const { web3 } = require("hardhat");
 const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
+const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMContractGasArt = hre.artifacts.require("SAMContractGas");
 const BN = require("bn.js");
 const { createImportSpecifier } = require("typescript");
@@ -50,10 +51,13 @@ describe("SAMContractGas", function () {
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
+      SAMConfig = await SAMConfigArt.new(owner);
+      SAMConfig.setRevenueAddress(revenueAddress);
+
       SAMContractGas = await SAMContractGasArt.new(
         owner,
         NftWhiteList.address,
-        revenueAddress
+        SAMConfig.address
       );
 
       // make sure the default fee rate is correct.
@@ -69,7 +73,10 @@ describe("SAMContractGas", function () {
       });
 
       // 2.5% fee, 10% royalties fee.
-      await SAMContractGas.updateFeeRate(250, 1000, { from: owner });
+      // await SAMContractGas.updateFeeRate(250, 1000, { from: owner });
+      await SAMContractGas.updateFeeRate(250, {from: owner});
+      await SAMConfig.setRoyaltiesFeeRate(1000);
+
     } catch (err) {
       console.log(err);
     }
@@ -535,9 +542,7 @@ describe("SAMContractGas", function () {
 
   it("Test fire NFT cannot sell for gas", async function () {
     // Set fire NFT contract address
-    await SAMContractGas.setFireNftContract(LFGFireNFT.address, {
-      from: owner,
-    });
+    await SAMConfig.setFireNftContractAddress(LFGFireNFT.address);
 
     let supply = await LFGFireNFT.totalSupply();
     console.log("supply ", supply.toString());

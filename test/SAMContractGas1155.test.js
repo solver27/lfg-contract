@@ -3,6 +3,7 @@ const hre = require("hardhat");
 const { web3 } = require("hardhat");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
+const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMContractGasArt = hre.artifacts.require("SAMContractGas");
 const BN = require("bn.js");
 const { createImportSpecifier } = require("typescript");
@@ -45,10 +46,13 @@ describe("SAMContractGas1155", function () {
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
+      SAMConfig = await SAMConfigArt.new(owner);
+      SAMConfig.setRevenueAddress(revenueAddress);
+
       SAMContractGas = await SAMContractGasArt.new(
         owner,
         NftWhiteList.address,
-        revenueAddress
+        SAMConfig.address
       );
 
       // This one must call from owner
@@ -57,7 +61,10 @@ describe("SAMContractGas1155", function () {
       });
 
       // 2.5% fee, 10% royalties fee.
-      await SAMContractGas.updateFeeRate(250, 1000, { from: owner });
+      // await SAMContractGas.updateFeeRate(250, 1000, { from: owner });
+      await SAMContractGas.updateFeeRate(250, {from: owner});
+      await SAMConfig.setRoyaltiesFeeRate(1000);
+      
     } catch (err) {
       console.log(err);
     }

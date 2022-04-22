@@ -6,6 +6,7 @@ const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
+const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMContractArt = hre.artifacts.require("SAMContract");
 const BurnTokenArt = hre.artifacts.require("BurnToken");
 const BN = require("bn.js");
@@ -16,6 +17,7 @@ describe("SAMContract", function () {
   let LFGNFT = null;
   let LFGFireNFT = null;
   let NftWhiteList = null;
+  let SAMConfig = null;
   let SAMContract = null;
   let BurnToken = null;
   let accounts = ["", "", "", "", "", "", ""],
@@ -47,12 +49,15 @@ describe("SAMContract", function () {
 
       NftWhiteList = await NftWhiteListArt.new(minter);
 
+      SAMConfig = await SAMConfigArt.new(minter);
+      SAMConfig.setRevenueAddress(revenueAddress);
+      SAMConfig.setBurnAddress(burnAddress);
+
       SAMContract = await SAMContractArt.new(
         minter,
         LFGToken.address,
         NftWhiteList.address,
-        burnAddress,
-        revenueAddress
+        SAMConfig.address
       );
 
       // make sure the default fee rate is discounted.
@@ -68,8 +73,9 @@ describe("SAMContract", function () {
       });
 
       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
-      await SAMContract.updateFeeRate(250, 1000, {from: minter});
-      await SAMContract.updateBurnFeeRate(5000, {from: minter});
+      await SAMContract.updateFeeRate(250, {from: minter});
+      await SAMConfig.setRoyaltiesFeeRate(1000);
+      // await SAMContract.updateBurnFeeRate(5000, {from: minter});
 
       BurnToken = await BurnTokenArt.new(minter, LFGToken.address, burnAddress1);
       await BurnToken.setOperator(SAMContract.address, true, {from: minter});
@@ -514,14 +520,17 @@ describe("SAMContract", function () {
   });
 
   it("test burn token when fire NFT was sold by fixed price", async function () {
+    console.log("BurnToken ", BurnToken.address);
     // Top up burn contract
     await LFGToken.transfer(BurnToken.address, "100000000000000000000000", {
       from: minter,
     });
     // set burn rate to 10%
     await BurnToken.setBurnRate(1000, {from: minter});
-    await SAMContract.setFireNftContract(LFGFireNFT.address, {from: minter});
+    // await SAMContract.setFireNftContract(LFGFireNFT.address, {from: minter});
     await SAMContract.setBurnTokenContract(BurnToken.address, {from: minter});
+
+    await SAMConfig.setFireNftContractAddress(LFGFireNFT.address);
 
     let supply = await LFGFireNFT.totalSupply();
     console.log("supply ", supply.toString());
