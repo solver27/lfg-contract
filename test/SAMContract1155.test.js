@@ -104,7 +104,7 @@ describe("SAMContract1155", function () {
 
     let listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
-    assert.equal(listingResult.length, 1);
+    assert.equal(listingResult.length, 1); 
 
     let balanceOfMarketplace = await LFGNFT1155.balanceOf(SAMContract.address, id);
     console.log("balance of of market place ", JSON.stringify(balanceOfMarketplace));
@@ -201,5 +201,78 @@ describe("SAMContract1155", function () {
         {from: accounts[2]}
       )
     ).to.be.revertedWith("Invalid duration");
+  });
+
+  it("test 1155 NFT multi sell feature", async function () {
+    const emptyCollection = [];
+    let result = await LFGNFT1155.create(accounts[2], 2, emptyCollection, {
+      from: accounts[2],
+    });
+    result = await LFGNFT1155.create(accounts[2], 2, emptyCollection, {
+      from: accounts[2],
+    });
+    
+    let id = result["logs"][0]["args"]["id"];
+    let nftBalanceOfAccount2 = await LFGNFT1155.balanceOf(accounts[2], id);
+    console.log("NFT Balance of account 2 ", nftBalanceOfAccount2.toString());
+
+    await LFGNFT1155.setApprovalForAll(SAMContract.address, true, {
+      from: accounts[2],
+    });
+
+    let latestBlock = await hre.ethers.provider.getBlock("latest");
+
+    await SAMContract.addListing(
+      LFGNFT1155.address,
+      id,
+      2, // copies
+      0, // fixed price
+      "20000000",
+      latestBlock["timestamp"] + 1,
+      3600 * 24,
+      0,
+      0,
+      {from: accounts[2]}
+    );
+
+    let listingResult = await SAMContract.listingOfAddr(accounts[2]);
+    console.log("getListingResult ", JSON.stringify(listingResult));
+    assert.equal(listingResult.length, 2); 
+
+    const testDepositAmount = "100000000000000000000000";
+    await LFGToken.transfer(accounts[1], testDepositAmount, {from: owner});
+
+    await LFGToken.approve(SAMContract.address, testDepositAmount, {
+      from: accounts[1],
+    });
+
+    let listingId = listingResult[0];
+    await SAMContract.buyNow(listingId, {from: accounts[1]});
+    listingId = listingResult[1];
+    await SAMContract.buyNow(listingId, {from: accounts[1]});
+
+    let nftBalanceOfAccount1 = await LFGNFT1155.balanceOf(accounts[1], id);
+    console.log("balance of of account 1 ", JSON.stringify(nftBalanceOfAccount1));
+    assert.equal(nftBalanceOfAccount1, "2");
+
+    nftBalanceOfAccount2 = await LFGNFT1155.balanceOf(accounts[2], id);
+    console.log("NFT Balance of account 2 ", nftBalanceOfAccount2.toString());
+    assert.equal(nftBalanceOfAccount2.toString(), "0");
+
+    const account1Tokens = await SAMContract.addrTokens(accounts[1]);
+    console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
+
+    let lfgBalanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
+    console.log("Token Balance of account 2 ", lfgBalanceOfAccount2.toString());
+    assert.equal(lfgBalanceOfAccount2.toString(), "60000000");
+
+    listingResult = await SAMContract.listingOfAddr(accounts[2]);
+    assert.equal(listingResult.length, 0);
+
+    let burnAmount = await LFGToken.balanceOf(burnAddress);
+    console.log("Burn amount ", burnAmount.toString());
+
+    assert.equal(burnAmount.toString(), "750000");
+
   });
 });

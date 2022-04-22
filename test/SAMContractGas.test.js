@@ -150,7 +150,7 @@ describe("SAMContractGas", function () {
 
     balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001994337036928800000);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001993794885711000000);
 
     let account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
@@ -281,7 +281,7 @@ describe("SAMContractGas", function () {
 
     let balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10003494037036928800000);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10003493409713709000000);
 
     // Account 3 bid failed, should be auto refunded
     let account3Tokens = await SAMContractGas.addrTokens(accounts[3]);
@@ -405,7 +405,7 @@ describe("SAMContractGas", function () {
 
     let balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10004493037036928800000);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10004492379089700917438);
 
     listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);

@@ -60,7 +60,7 @@ describe("SAMContractGas1155", function () {
       // 2.5% fee, 10% royalties fee.
       // await SAMContractGas.updateFeeRate(250, 1000, { from: owner });
       await SAMContractGas.updateFeeRate(250, {from: owner});
-      await SAMConfig.setRoyaltiesFeeRate(1000);
+      await SAMConfig.setRoyaltiesFeeRate(1000, {from: owner});
     } catch (err) {
       console.log(err);
     }
