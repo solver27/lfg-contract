@@ -9,6 +9,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ISAMConfig.sol";
 
 contract SAMConfig is Ownable, ISAMConfig {
+    uint256 public constant FEE_RATE_BASE = 10000;
+
+    uint256 public constant MAXIMUM_ROYALTIES_FEE_RATE = 5000;
+
     // The royalties fee rate
     uint256 public royaltiesFeeRate = 500;
 
@@ -53,6 +57,7 @@ contract SAMConfig is Ownable, ISAMConfig {
     }
 
     function setRoyaltiesFeeRate(uint256 rate) external onlyOwner {
+        require(rate <= MAXIMUM_ROYALTIES_FEE_RATE, "Invalid royalities fee rate");
         royaltiesFeeRate = rate;
         emit UpdatedRoyaltiesFeeRate(rate);
     }
@@ -74,6 +79,8 @@ contract SAMConfig is Ownable, ISAMConfig {
     }
 
     function setFeeBurnRate(uint256 _rate) external onlyOwner {
+        require(_rate <= FEE_RATE_BASE, "Invalid fee burn rate");
+
         feeBurnRate = _rate;
         emit UpdatedFeeBurnRate(_rate);
     }
