@@ -16,7 +16,6 @@ contract SAMContract is SAMContractBase {
     // The total burned token amount
     uint256 public totalBurnAmount;
 
-    //address public burnFromAddress;
     IBurnToken public burnTokenContract;
 
     IERC20 public lfgToken;
