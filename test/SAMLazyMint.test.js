@@ -5,8 +5,6 @@ const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const SAMLazyMintArt = hre.artifacts.require("SAMLazyMint");
-const BN = require("bn.js");
-const { createImportSpecifier } = require("typescript");
 
 describe("SAMLazyMint", function () {
   let LFGToken = null;

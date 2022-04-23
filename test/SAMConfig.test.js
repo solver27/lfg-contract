@@ -3,8 +3,6 @@ const {assert, expect} = require("chai");
 const hre = require("hardhat");
 const {web3} = require("hardhat");
 const SAMConfigArt = hre.artifacts.require("SAMConfig");
-const BN = require("bn.js");
-const {createImportSpecifier} = require("typescript");
 
 describe("SAMConfig", function () {
   let SAMConfig = null;

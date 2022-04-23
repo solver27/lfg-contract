@@ -2,8 +2,6 @@ const { assert, expect } = require("chai");
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
-const BN = require("bn.js");
-const { createImportSpecifier } = require("typescript");
 
 describe("LFGNFT", function () {
   let LFGNFT = null;

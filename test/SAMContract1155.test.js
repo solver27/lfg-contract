@@ -7,8 +7,6 @@ const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
 const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMContractArt = hre.artifacts.require("SAMContract");
 const BurnTokenArt = hre.artifacts.require("BurnToken");
-const BN = require("bn.js");
-const {createImportSpecifier} = require("typescript");
 
 describe("SAMContract1155", function () {
   let LFGToken = null;

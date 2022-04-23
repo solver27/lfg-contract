@@ -5,8 +5,6 @@ const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
 const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMContractGasArt = hre.artifacts.require("SAMContractGas");
-const BN = require("bn.js");
-const {createImportSpecifier} = require("typescript");
 
 async function getBiddingOfAddr(samContract, addr) {
   const biddingIds = await samContract.biddingOfAddr(addr);

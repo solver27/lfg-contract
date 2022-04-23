@@ -4,7 +4,6 @@ const { web3 } = require("hardhat");
 const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
 const NftAirdropArt = hre.artifacts.require("NftAirdrop");
 const BN = require("bn.js");
-const { createImportSpecifier } = require("typescript");
 
 describe("NftAirdrop", function () {
   let LFGFireNFT = null;
