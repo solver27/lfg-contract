@@ -2,6 +2,8 @@
 
 //** SAM(Social Aggregator Marketplace) Contract trade by ERC20 token(LFG, USDT) */
 //** Author Xiao Shengguang : SAM(Social Aggregator Marketplace) Contract 2022.1 */
+//** The difference with SAMContract is it doesn't charge royalties, and doesn't */
+//** burn token when the FireNFT is sold because all the FireNFT is mintted      */
 
 pragma solidity ^0.8.0;
 
@@ -20,12 +22,6 @@ contract SAMLazyMint is SAMLazyMintBase {
 
     // The total burned token amount
     uint256 public totalBurnAmount;
-
-    // The revenue address
-    address public revenueAddress;
-
-    // Total revenue amount
-    uint256 public revenueAmount;
 
     IERC20 public lfgToken;
 
@@ -59,45 +55,6 @@ contract SAMLazyMint is SAMLazyMintBase {
     function updateBurnFeeRate(uint256 _feeBurnRate) external onlyOwner {
         require(_feeBurnRate <= FEE_RATE_BASE, "Invalid fee burn rate");
         feeBurnRate = _feeBurnRate;
-    }
-
-    /*
-     * @notice Place bidding for the listing item, only support normal auction.
-     * @dev The bidding price must higher than previous price.
-     */
-    function placeBid(bytes32 listingId, uint256 price) external nonReentrant {
-        listing storage lst = listingRegistry[listingId];
-        require(lst.sellMode == SellMode.Auction, "Can only bid for listing on auction");
-        require(block.timestamp >= lst.startTime, "The auction haven't start");
-        require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
-        require(msg.sender != lst.seller, "Bidder cannot be seller");
-
-        uint256 minPrice = lst.price;
-        // The last element is the current highest price
-        if (lst.biddingIds.length > 0) {
-            bytes32 lastBiddingId = lst.biddingIds[lst.biddingIds.length - 1];
-            minPrice = biddingRegistry[lastBiddingId].price;
-        }
-
-        require(price > minPrice, "Bid price too low");
-
-        _depositToken(msg.sender, price);
-
-        bytes32 biddingId = keccak256(abi.encodePacked(operationNonce, lst.tokenId, price));
-
-        biddingRegistry[biddingId].id = biddingId;
-        biddingRegistry[biddingId].bidder = msg.sender;
-        biddingRegistry[biddingId].listingId = listingId;
-        biddingRegistry[biddingId].price = price;
-        biddingRegistry[biddingId].timestamp = block.timestamp;
-
-        operationNonce++;
-
-        lst.biddingIds.push(biddingId);
-
-        addrBiddingIds[msg.sender].push(biddingId);
-
-        emit BiddingPlaced(biddingId, listingId, price);
     }
 
     /*
@@ -156,28 +113,15 @@ contract SAMLazyMint is SAMLazyMintBase {
      * @dev If it is dutch auction, then the price is dutch auction price, if normal auction, then the price is buyNowPrice.
      */
     function buyNow(bytes32 listingId) external nonReentrant {
-        listing storage lst = listingRegistry[listingId];
-        require(lst.sellMode != SellMode.Auction, "Auction not support buy now");
-        require(block.timestamp >= lst.startTime, "The auction haven't start");
-        require(lst.startTime + lst.duration >= block.timestamp, "The auction already expired");
-        require(msg.sender != lst.seller, "Buyer cannot be seller");
+        _buyNow(listingId);
+    }
 
-        uint256 price = getPrice(listingId);
-
-        _processFee(msg.sender, price);
-
-        // Deposit the tokens to market place contract.
-        _depositToken(msg.sender, price);
-
-        uint256 sellerAmount = price;
-
-        _transferToken(msg.sender, lst.seller, sellerAmount);
-
-        _mintToBuyer(msg.sender, lst.tokenId, lst.collectionTag);
-
-        emit BuyNow(listingId, msg.sender, price);
-
-        _removeListing(listingId, lst.seller);
+    /*
+     * @notice Place bidding for the listing item, only support normal auction.
+     * @dev The bidding price must higher than previous price.
+     */
+    function placeBid(bytes32 listingId, uint256 price) external nonReentrant {
+        _placeBid(listingId, price);
     }
 
     /*
@@ -185,62 +129,25 @@ contract SAMLazyMint is SAMLazyMintBase {
      * @dev Can only claim after the auction period finished.
      */
     function claimNft(bytes32 biddingId) external nonReentrant {
-        bidding storage bid = biddingRegistry[biddingId];
-        require(bid.bidder == msg.sender, "Only bidder can claim NFT");
-
-        listing storage lst = listingRegistry[bid.listingId];
-        require(
-            lst.startTime + lst.duration < block.timestamp,
-            "The bidding period haven't complete"
-        );
-        for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
-            bytes32 tmpId = lst.biddingIds[i];
-            if (biddingRegistry[tmpId].price > bid.price) {
-                require(false, "The bidding is not the highest price");
-            }
-        }
-
-        _processFee(msg.sender, bid.price);
-
-        uint256 sellerAmount = bid.price;
-
-        _transferToken(msg.sender, lst.seller, sellerAmount);
-
-        _mintToBuyer(msg.sender, lst.tokenId, lst.collectionTag);
-
-        emit ClaimNFT(lst.id, biddingId, msg.sender);
-
-        // Refund the failed bidder
-        for (uint256 i = 0; i < lst.biddingIds.length; ++i) {
-            bytes32 tmpId = lst.biddingIds[i];
-            if (tmpId != biddingId) {
-                _transferToken(
-                    biddingRegistry[tmpId].bidder,
-                    biddingRegistry[tmpId].bidder,
-                    biddingRegistry[tmpId].price
-                );
-            }
-        }
-
-        _removeListing(lst.id, lst.seller);
+        _claimNft(biddingId);
     }
 
-    function _processFee(address buyer, uint256 price) internal {
+    function _processFee(uint256 price) internal override {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
         uint256 feeToBurn = (fee * feeBurnRate) / FEE_RATE_BASE;
         uint256 revenue = fee - feeToBurn;
-        SafeERC20.safeTransferFrom(lfgToken, buyer, revenueAddress, revenue);
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, revenueAddress, revenue);
         revenueAmount += revenue;
 
-        SafeERC20.safeTransferFrom(lfgToken, buyer, burnAddress, feeToBurn);
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, burnAddress, feeToBurn);
         totalBurnAmount += feeToBurn;
     }
 
-    function _depositToken(address addr, uint256 _amount) internal {
+    function _depositToken(uint256 _amount) internal override {
         // Using lfgToken.safeTransferFrom(addr, address(this), _amount) will increase
         // contract size for 0.13KB, which will make the contract no deployable.
-        SafeERC20.safeTransferFrom(lfgToken, addr, address(this), _amount);
-        addrTokens[addr] += _amount;
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, address(this), _amount);
+        addrTokens[msg.sender] += _amount;
         totalEscrowAmount += _amount;
     }
 
@@ -248,7 +155,7 @@ contract SAMLazyMint is SAMLazyMintBase {
         address from,
         address to,
         uint256 _amount
-    ) internal {
+    ) internal override {
         require(addrTokens[from] >= _amount, "The locked amount is not enough");
         SafeERC20.safeTransfer(lfgToken, to, _amount);
         addrTokens[from] -= _amount;
