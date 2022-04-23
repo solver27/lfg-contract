@@ -4,6 +4,7 @@ const hre = require("hardhat");
 const {web3} = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
+const UserBlackListArt = hre.artifacts.require("UserBlackList");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
 const SAMConfigArt = hre.artifacts.require("SAMConfig");
@@ -12,6 +13,7 @@ const BurnTokenArt = hre.artifacts.require("BurnToken");
 
 describe("SAMContract", function () {
   let LFGToken = null;
+  let UserBlackList = null;
   let LFGNFT = null;
   let LFGFireNFT = null;
   let NftWhiteList = null;
@@ -41,7 +43,9 @@ describe("SAMContract", function () {
       ] = await web3.eth.getAccounts();
       LFGToken = await LFGTokenArt.new("LFG Token", "LFG", "1000000000000000000000000000", owner);
 
-      LFGNFT = await LFGNFTArt.new(owner);
+      UserBlackList = await UserBlackListArt.new(owner);
+
+      LFGNFT = await LFGNFTArt.new(owner, UserBlackList.address);
 
       LFGFireNFT = await LFGFireNFTArt.new();
 
@@ -54,6 +58,8 @@ describe("SAMContract", function () {
       // make sure the default fee rate is discounted.
       const feeRateResult = await SAMContract.feeRate();
       assert.equal(feeRateResult.toString(), "125");
+
+      // await UserBlackList.setUserBlackList([accounts[2]], [true], {from: owner});
 
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT.address, true, {

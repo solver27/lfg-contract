@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 
-//** NFT Airdrop Contract */
-//** Author Xiao Shengguang : NFT Airdrop Contract 2022.1 */
+//** NFT Whitelist Contract */
+//** Author Xiao Shengguang : NFT Whitelist Contract 2022.1 */
+//** Only whitelisted NFT contract can sell on marketplace  */
 
 pragma solidity ^0.8.0;
 

@@ -1,6 +1,7 @@
 const {assert, expect} = require("chai");
 const hre = require("hardhat");
 const {web3} = require("hardhat");
+const UserBlackListArt = hre.artifacts.require("UserBlackList");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
 const SAMConfigArt = hre.artifacts.require("SAMConfig");
@@ -19,6 +20,7 @@ async function getBiddingOfAddr(samContract, addr) {
 }
 
 describe("SAMContractGas1155", function () {
+  let UserBlackList = null;
   let LFGNFT1155 = null;
   let NftWhiteList = null;
   let SAMContractGas = null;
@@ -42,13 +44,17 @@ describe("SAMContractGas1155", function () {
         revenueAddress,
       ] = await web3.eth.getAccounts();
 
-      LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
+      UserBlackList = await UserBlackListArt.new(owner);
+
+      LFGNFT1155 = await LFGNFT1155Art.new(owner, UserBlackList.address, "");
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
       SAMConfig = await SAMConfigArt.new(owner, revenueAddress, burnAddress);
 
       SAMContractGas = await SAMContractGasArt.new(owner, NftWhiteList.address, SAMConfig.address);
+
+      // await UserBlackList.setUserBlackList([accounts[2]], [true], {from: owner});
 
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT1155.address, true, {
