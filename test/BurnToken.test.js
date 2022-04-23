@@ -3,8 +3,6 @@ const hre = require("hardhat");
 const { web3 } = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
 const BurnTokenArt = hre.artifacts.require("BurnToken");
-const BN = require("bn.js");
-const { createImportSpecifier } = require("typescript");
 
 describe("BurnToken", function () {
   let LFGToken = null;
