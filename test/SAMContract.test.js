@@ -78,7 +78,8 @@ describe("SAMContract", function () {
     let supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    await LFGNFT.mint(2, accounts[2], {from: owner});
+    await LFGNFT.mint(accounts[2], 1, {from: accounts[2]});
+    await LFGNFT.mint(accounts[2], 2, {from: accounts[2]});
 
     supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
@@ -288,7 +289,8 @@ describe("SAMContract", function () {
     let supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    await LFGNFT.mint(2, accounts[2], {from: owner});
+    await LFGNFT.mint(accounts[2], 3, {from: accounts[2]});
+    await LFGNFT.mint(accounts[2], 4, {from: accounts[2]});
 
     supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
@@ -420,7 +422,7 @@ describe("SAMContract", function () {
     let supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    await LFGNFT.mint(1, accounts[2], {from: accounts[2]});
+    await LFGNFT.mint(accounts[2], 5, {from: accounts[2]});
 
     supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());

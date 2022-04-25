@@ -17,18 +17,12 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     // MAX supply of collection
     uint256 public maxSupply;
 
-    // Max batch quantity limit
-    uint256 public constant MAX_BATCH_QUANTITY = 1000;
-
-    // Max quantity can mint each time
-    uint256 public maxBatchQuantity;
-
     // creators
     mapping(uint256 => address) public creators;
 
     struct RoyaltyInfo {
-        address receiver;   // The payment receiver of royalty
-        uint16 rate;        // The rate of the payment
+        address receiver; // The payment receiver of royalty
+        uint16 rate; // The rate of the payment
     }
 
     // royalties
@@ -37,13 +31,13 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 2000;
 
-    event Minted(address indexed minter, uint256 qty, address indexed to);
+    event Minted(address indexed minter, address indexed to, uint256 metaDataId);
+
+    event AdminMinted(uint256 qty, address indexed to);
 
     event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
 
     event SetMaxSupply(uint256 maxSupply);
-
-    event SetMaxBatchQuantity(uint256 maxBatchQuantity);
 
     /**
      * @dev Mapping of interface ids to whether or not it's supported.
@@ -59,7 +53,6 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
         _registerInterface(_INTERFACE_ID_ERC2981);
 
         maxSupply = 10000;
-        maxBatchQuantity = 10;
     }
 
     /**
@@ -81,32 +74,35 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Enumerable, IERC165) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(ERC721Enumerable, IERC165)
+        returns (bool)
+    {
         return super.supportsInterface(interfaceId) || _supportedInterfaces[interfaceId];
     }
 
     /**************************
      ***** MINT FUNCTIONS *****
      *************************/
-    function mint(uint256 _qty, address _to) external override {
-        require(totalSupply() + _qty <= maxSupply, "NFT: out of stock");
+    function mint(address _to, uint256 _metaDataId) external override {
+        require(totalSupply() + 1 <= maxSupply, "NFT: out of stock");
         require(_to != address(0), "NFT: invalid address");
-        require(_qty <= maxBatchQuantity, "NFT: cannot mint over max batch quantity");
 
-        for (uint256 i = 0; i < _qty; i++) {
-            // Using tokenId in the loop instead of totalSupply() + 1,
-            // because totalSupply() changed after _safeMint function call.
-            uint256 tokenId = totalSupply() + 1;
-            _safeMint(_to, tokenId);
+        // Using tokenId in the loop instead of totalSupply() + 1,
+        // because totalSupply() changed after _safeMint function call.
+        uint256 tokenId = totalSupply() + 1;
+        _safeMint(_to, tokenId);
 
-            if (msg.sender == tx.origin) {
-                creators[tokenId] = msg.sender;
-            } else {
-                creators[tokenId] = address(0);
-            }
+        if (msg.sender == tx.origin) {
+            creators[tokenId] = msg.sender;
+        } else {
+            creators[tokenId] = address(0);
         }
 
-        emit Minted(msg.sender, _qty, _to);
+        emit Minted(msg.sender, _to, _metaDataId);
     }
 
     function adminMint(uint256 _qty, address _to) external onlyOwner {
@@ -117,6 +113,8 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
         for (uint256 i = 0; i < _qty; i++) {
             _safeMint(_to, totalSupply() + 1);
         }
+
+        emit AdminMinted(_qty, _to);
     }
 
     /**************************
@@ -159,17 +157,21 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
 
     function royaltyInfo(uint256 _tokenId, uint256 _salePrice)
         external
-        override
         view
+        override
         returns (address receiver, uint256 royaltyAmount)
     {
         receiver = royalties[_tokenId].receiver;
         if (royalties[_tokenId].rate > 0 && royalties[_tokenId].receiver != address(0)) {
-            royaltyAmount = _salePrice * royalties[_tokenId].rate / 10000;
+            royaltyAmount = (_salePrice * royalties[_tokenId].rate) / 10000;
         }
     }
 
-    function setRoyalty(uint256 _tokenId, address _receiver, uint16 _royalty) external {
+    function setRoyalty(
+        uint256 _tokenId,
+        address _receiver,
+        uint16 _royalty
+    ) external {
         require(creators[_tokenId] == msg.sender, "NFT: Invalid creator");
         require(creators[_tokenId] == ownerOf(_tokenId), "NFT: Cannot set royalty after transfer");
         require(_receiver != address(0), "NFT: invalid royalty receiver");
@@ -186,12 +188,5 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
         maxSupply = _maxSupply;
 
         emit SetMaxSupply(_maxSupply);
-    }
-
-    function setMaxBatchQuantity(uint256 _batchQuantity) external onlyOwner {
-        require(_batchQuantity >= 1 && _batchQuantity <= MAX_BATCH_QUANTITY, "Max batch quantity should between 1 to 1000");
-        maxBatchQuantity = _batchQuantity;
-
-        emit SetMaxBatchQuantity(_batchQuantity);
     }
 }
