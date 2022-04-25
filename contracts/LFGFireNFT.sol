@@ -5,9 +5,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "./interfaces/ILFGNFT.sol";
+import "./interfaces/ILFGFireNFT.sol";
 
-contract LFGFireNFT is ILFGNFT, ERC721Enumerable, Ownable {
+contract LFGFireNFT is ILFGFireNFT, ERC721Enumerable, Ownable {
     using Strings for uint256;
 
     // Base Token URI
