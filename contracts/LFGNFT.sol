@@ -31,9 +31,14 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 2000;
 
-    event Minted(address indexed minter, address indexed to, uint256 metaDataId);
+    event Minted(
+        address indexed minter,
+        address indexed to,
+        uint256 indexed tokenId,
+        uint256 metaDataId
+    );
 
-    event AdminMinted(uint256 qty, address indexed to);
+    event AdminMinted(address indexed minter, address indexed to, uint256[] tokenIds);
 
     event SetRoyalty(uint256 tokenId, address receiver, uint256 rate);
 
@@ -102,19 +107,21 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, IERC2981, Ownable {
             creators[tokenId] = address(0);
         }
 
-        emit Minted(msg.sender, _to, _metaDataId);
+        emit Minted(msg.sender, _to, tokenId, _metaDataId);
     }
 
     function adminMint(uint256 _qty, address _to) external onlyOwner {
         require(_qty != 0, "NFT: minitum 1 nft");
         require(_to != address(0), "NFT: invalid address");
         require(totalSupply() + _qty <= maxSupply, "NFT: max supply reached");
-
+        uint256[] memory tokenIds = new uint256[](_qty);
         for (uint256 i = 0; i < _qty; i++) {
-            _safeMint(_to, totalSupply() + 1);
+            uint256 tokenId = totalSupply() + 1;
+            _safeMint(_to, tokenId);
+            tokenIds[i] = tokenId;
         }
 
-        emit AdminMinted(_qty, _to);
+        emit AdminMinted(msg.sender, _to, tokenIds);
     }
 
     /**************************
