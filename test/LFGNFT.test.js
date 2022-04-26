@@ -5,13 +5,13 @@ const LFGNFTArt = hre.artifacts.require("LFGNFT");
 
 describe("LFGNFT", function () {
   let LFGNFT = null;
-  let accounts = ["", ""],
+  let accounts = ["", "", ""],
     owner,
     minter;
 
   before("Deploy contract", async function () {
     try {
-      [accounts[0], accounts[1], owner, minter] = await web3.eth.getAccounts();
+      [accounts[0], accounts[1], accounts[2], owner, minter] = await web3.eth.getAccounts();
       LFGNFT = await LFGNFTArt.new(owner);
     } catch (err) {
       console.log(err);
@@ -19,7 +19,8 @@ describe("LFGNFT", function () {
   });
 
   it("test NFT Royalties", async function () {
-    await LFGNFT.mint(accounts[1], 1, { from: accounts[1] });
+    let tx = await LFGNFT.mint(accounts[1], 1, { from: accounts[1] });
+    console.log("tx: ", JSON.stringify(tx));
     const nftBalance = await LFGNFT.balanceOf(accounts[1]);
     console.log("nftBalance ", nftBalance.toString());
 
@@ -48,5 +49,12 @@ describe("LFGNFT", function () {
 
     assert.equal(royaltyInfo["receiver"], accounts[1]);
     assert.equal(royaltyInfo["royaltyAmount"], "1000");
+  });
+
+  it("test admin mint", async function () {
+    await expect(LFGNFT.adminMint(100, accounts[2], { from: accounts[2]})).to.be.revertedWith("Ownable: caller is not the owner");
+    let adminMintTx = await LFGNFT.adminMint(100, accounts[2], { from: owner});
+    const nftBalance = await LFGNFT.balanceOf(accounts[2]);
+    assert.equal(nftBalance.toString(), "100");
   });
 });

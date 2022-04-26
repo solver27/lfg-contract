@@ -151,7 +151,7 @@ describe("SAMContractGas", function () {
 
     balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001993134885711000000);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001993104885711000000);
 
     let account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
@@ -291,7 +291,7 @@ describe("SAMContractGas", function () {
 
     let balanceOfAccount3 = await web3.eth.getBalance(accounts[3]);
     console.log("Balance of account 3 ", balanceOfAccount3.toString());
-    assert.isAbove(parseInt(balanceOfAccount3.toString()), 9999996480008170000000);
+    assert.isAbove(parseInt(balanceOfAccount3.toString()), 9999986400000000000000);
 
     let revenueAmount = await SAMContractGas.revenueAmount();
     assert.equal(revenueAmount.toString(), "87500000000000000");
