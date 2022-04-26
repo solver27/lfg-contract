@@ -14,6 +14,20 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
 
     event CreateCollection(address indexed addr, bytes data);
 
+    event CreateToken(
+        address indexed creator,
+        address indexed to,
+        uint256 indexed tokenId,
+        bytes data
+    );
+
+    event CreateTokenBatch(
+        address indexed creator,
+        address indexed to,
+        uint256[] tokenIds,
+        bytes data
+    );
+
     uint256 private _currentTokenID = 0;
     mapping(uint256 => address) public creators;
 
@@ -144,7 +158,10 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
             );
         }
 
-        return _create(_to, _initialSupply, _data);
+        uint256 tokenId = _create(_to, _initialSupply, _data);
+
+        emit CreateToken(msg.sender, _to, tokenId, _data);
+        return tokenId;
     }
 
     function createBatch(
@@ -168,6 +185,9 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         for (uint256 i = 0; i < _quantity; i++) {
             ids[i] = _create(_to, _initialSupply, _data);
         }
+
+        emit CreateTokenBatch(msg.sender, _to, ids, _data);
+
         return ids;
     }
 
