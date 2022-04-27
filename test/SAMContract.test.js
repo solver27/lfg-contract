@@ -59,8 +59,6 @@ describe("SAMContract", function () {
       const feeRateResult = await SAMContract.feeRate();
       assert.equal(feeRateResult.toString(), "125");
 
-      // await UserBlackList.setUserBlackList([accounts[2]], [true], {from: owner});
-
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT.address, true, {
         from: owner,
@@ -687,7 +685,7 @@ describe("SAMContract", function () {
     assert.equal(listingResult.length, 1);
     let listingId = listingResult[0];
     const lstDetail = await SAMContract.listingRegistry(listingId);
-    console.log("listing detail ", lstDetail);
+    //console.log("listing detail ", lstDetail);
 
     await expect(SAMContract.removeListing(listingId, {from: accounts[1]})).to.be.revertedWith(
       "Only seller can remove"
@@ -697,5 +695,36 @@ describe("SAMContract", function () {
     listingResult = await SAMContract.listingOfAddr(accounts[2]);
     console.log("getListingResult ", JSON.stringify(listingResult));
     assert.equal(listingResult.length, 0);
+
+    account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account2 after remove listing ", JSON.stringify(account2TokenIds));
+  });
+
+  it("test add user to blacklist", async function () {
+    let account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
+    console.log("tokenIds of account2 ", JSON.stringify(account2TokenIds));
+
+    let getOwnerResult = await LFGNFT.ownerOf(account2TokenIds[0]);
+    console.log("getOwner result ", getOwnerResult);
+
+    // blacklist the user
+    await UserBlackList.setUserBlackList([accounts[2]], [true], {from: owner});
+
+    await LFGNFT.approve(SAMContract.address, account2TokenIds[0], {from: accounts[2]});
+
+    await expect(
+      SAMContract.addListing(
+        LFGNFT.address,
+        account2TokenIds[0],
+        1, // copies
+        0, // fixed price
+        "10000000",
+        0, // The start time no use
+        0, // Duration
+        0, // _discountInterval
+        0, // _discountAmount
+        {from: accounts[2]}
+      )
+    ).to.be.revertedWith("from address is blacklisted");
   });
 });

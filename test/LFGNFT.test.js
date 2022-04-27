@@ -22,7 +22,6 @@ describe("LFGNFT", function () {
   });
 
   it("test NFT Royalties", async function () {
-    // await UserBlackList.setUserBlackList([accounts[1]], [true], {from: owner});
     await LFGNFT.mint(accounts[1], 1, {from: accounts[1]});
     //console.log("tx: ", JSON.stringify(tx));
     const nftBalance = await LFGNFT.balanceOf(accounts[1]);
@@ -62,5 +61,17 @@ describe("LFGNFT", function () {
     let adminMintTx = await LFGNFT.adminMint(100, accounts[2], {from: owner});
     const nftBalance = await LFGNFT.balanceOf(accounts[2]);
     assert.equal(nftBalance.toString(), "100");
+  });
+
+  it("test blacklist", async function () {
+    await UserBlackList.setUserBlackList([accounts[1]], [true], {from: owner});
+    await expect(LFGNFT.mint(accounts[1], 1, {from: accounts[1]})).to.be.revertedWith("User is blacklisted");
+
+    let account1TokenIds = await LFGNFT.tokensOfOwner(accounts[1]);
+    console.log("tokenIds of account1 ", JSON.stringify(account1TokenIds));
+
+    await expect(
+      LFGNFT.transferFrom(accounts[1], accounts[2], account1TokenIds[0], {from: accounts[1]})
+    ).to.be.revertedWith("from address is blacklisted");
   });
 });

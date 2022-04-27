@@ -215,6 +215,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256 _quantity,
         bytes memory _data
     ) public creatorOnly(_id) {
+        require(!userBlackListContract.isBlackListed(msg.sender), "User is blacklisted");
         require(_to != address(0), "NFT: invalid address");
         require(_id > 0, "Invalid token id");
         require(_quantity > 0, "Invalid quantity");
@@ -236,6 +237,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
         uint256[] memory _quantities,
         bytes memory _data
     ) public {
+        require(!userBlackListContract.isBlackListed(msg.sender), "User is blacklisted");
         require(_to != address(0), "NFT: invalid address");
 
         for (uint256 i = 0; i < _ids.length; i++) {

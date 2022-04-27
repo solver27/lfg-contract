@@ -51,8 +51,6 @@ describe("SAMContract1155", function () {
 
       SAMContract = await SAMContractArt.new(owner, LFGToken.address, NftWhiteList.address, SAMConfig.address);
 
-      // await UserBlackList.setUserBlackList([accounts[2]], [true], {from: owner});
-
       // This one must call from owner
       await NftWhiteList.setNftContractWhitelist(LFGNFT1155.address, true, {
         from: owner,

@@ -44,9 +44,6 @@ describe("SAMLazyMint", function () {
       LFGNFT1155 = await LFGNFT1155Art.new(owner, UserBlackList.address, "");
 
       SAMLazyMint = await SAMLazyMintArt.new(owner, LFGToken.address, LFGNFT1155.address, burnAddress, revenueAddress);
-    
-      // Let lazy mint contract can create the token
-      // await UserBlackList.setUserBlackList([SAMLazyMint.address, accounts[2]], [true, true], {from: owner});
 
       // 2.5% fee, 50% of the fee burn
       await SAMLazyMint.updateFeeRate(250, {from: owner});
