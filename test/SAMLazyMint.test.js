@@ -1,7 +1,8 @@
-const { assert, expect } = require("chai");
+const {assert, expect} = require("chai");
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const {web3} = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
+const UserBlackListArt = hre.artifacts.require("UserBlackList");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const SAMConfigArt = hre.artifacts.require("SAMConfig");
@@ -9,6 +10,7 @@ const SAMLazyMintArt = hre.artifacts.require("SAMLazyMint");
 
 describe("SAMLazyMint", function () {
   let LFGToken = null;
+  let UserBlackList = null;
   let LFGNFT = null;
   let LFGNFT1155 = null;
   let SAMLazyMint = null;
@@ -34,16 +36,11 @@ describe("SAMLazyMint", function () {
         burnAddress1,
       ] = await web3.eth.getAccounts();
 
-      LFGToken = await LFGTokenArt.new(
-        "LFG Token",
-        "LFG",
-        "1000000000000000000000000000",
-        owner
-      );
+      LFGToken = await LFGTokenArt.new("LFG Token", "LFG", "1000000000000000000000000000", owner);
 
-      LFGNFT = await LFGNFTArt.new(owner);
+      UserBlackList = await UserBlackListArt.new(owner);
 
-      LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
+      LFGNFT = await LFGNFTArt.new(owner, UserBlackList.address);
 
       SAMConfig = await SAMConfigArt.new(owner, revenueAddress, burnAddress);
 
@@ -62,7 +59,6 @@ describe("SAMLazyMint", function () {
     console.log("firstCreateor ", firstCreateor.toString());
     assert.equal(firstCreateor, "0x0000000000000000000000000000000000000000");
 
-
     const collectionTag = web3.utils.asciiToHex("CryoptKitty");
     await LFGNFT1155.createCollection(collectionTag, {
       from: accounts[2],
@@ -80,7 +76,7 @@ describe("SAMLazyMint", function () {
       3600 * 24,
       0,
       0,
-      { from: accounts[2] }
+      {from: accounts[2]}
     );
 
     let listingResult = await SAMLazyMint.listingOfAddr(accounts[2]);
@@ -89,7 +85,7 @@ describe("SAMLazyMint", function () {
     let listingId = listingResult[0];
 
     const testDepositAmount = "100000000000000000000000";
-    await LFGToken.transfer(accounts[1], testDepositAmount, { from: owner });
+    await LFGToken.transfer(accounts[1], testDepositAmount, {from: owner});
 
     let balance = await LFGToken.balanceOf(accounts[1]);
     console.log("account 1 balance ", balance.toString());
@@ -98,15 +94,13 @@ describe("SAMLazyMint", function () {
       from: accounts[1],
     });
 
-    await expect(
-      SAMLazyMint.placeBid(listingId, "10000000", { from: accounts[1] })
-    ).to.be.revertedWith("Can only bid for listing on auction");
+    await expect(SAMLazyMint.placeBid(listingId, "10000000", {from: accounts[1]})).to.be.revertedWith(
+      "Can only bid for listing on auction"
+    );
 
-    await expect(
-      SAMLazyMint.buyNow(listingId, { from: accounts[2] })
-    ).to.be.revertedWith("Buyer cannot be seller");
+    await expect(SAMLazyMint.buyNow(listingId, {from: accounts[2]})).to.be.revertedWith("Buyer cannot be seller");
 
-    await SAMLazyMint.buyNow(listingId, { from: accounts[1] });
+    await SAMLazyMint.buyNow(listingId, {from: accounts[1]});
 
     firstCreateor = await LFGNFT1155.creators(1);
     console.log("firstCreateor ", firstCreateor.toString());

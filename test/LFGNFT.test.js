@@ -1,10 +1,12 @@
-const { assert, expect } = require("chai");
+const {assert, expect} = require("chai");
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const {web3} = require("hardhat");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
+const UserBlackListArt = hre.artifacts.require("UserBlackList");
 
 describe("LFGNFT", function () {
   let LFGNFT = null;
+  let UserBlackList = null;
   let accounts = ["", "", ""],
     owner,
     minter;
@@ -12,15 +14,16 @@ describe("LFGNFT", function () {
   before("Deploy contract", async function () {
     try {
       [accounts[0], accounts[1], accounts[2], owner, minter] = await web3.eth.getAccounts();
-      LFGNFT = await LFGNFTArt.new(owner);
+      UserBlackList = await UserBlackListArt.new(owner);
+      LFGNFT = await LFGNFTArt.new(owner, UserBlackList.address);
     } catch (err) {
       console.log(err);
     }
   });
 
   it("test NFT Royalties", async function () {
-    let tx = await LFGNFT.mint(accounts[1], 1, { from: accounts[1] });
-    console.log("tx: ", JSON.stringify(tx));
+    await LFGNFT.mint(accounts[1], 1, {from: accounts[1]});
+    //console.log("tx: ", JSON.stringify(tx));
     const nftBalance = await LFGNFT.balanceOf(accounts[1]);
     console.log("nftBalance ", nftBalance.toString());
 
@@ -52,9 +55,23 @@ describe("LFGNFT", function () {
   });
 
   it("test admin mint", async function () {
-    await expect(LFGNFT.adminMint(100, accounts[2], { from: accounts[2]})).to.be.revertedWith("Ownable: caller is not the owner");
-    let adminMintTx = await LFGNFT.adminMint(100, accounts[2], { from: owner});
+    await expect(LFGNFT.adminMint(100, accounts[2], {from: accounts[2]})).to.be.revertedWith(
+      "Ownable: caller is not the owner"
+    );
+    let adminMintTx = await LFGNFT.adminMint(100, accounts[2], {from: owner});
     const nftBalance = await LFGNFT.balanceOf(accounts[2]);
     assert.equal(nftBalance.toString(), "100");
+  });
+
+  it("test blacklist", async function () {
+    await UserBlackList.setUserBlackList([accounts[1]], [true], {from: owner});
+    await expect(LFGNFT.mint(accounts[1], 1, {from: accounts[1]})).to.be.revertedWith("User is blacklisted");
+
+    let account1TokenIds = await LFGNFT.tokensOfOwner(accounts[1]);
+    console.log("tokenIds of account1 ", JSON.stringify(account1TokenIds));
+
+    await expect(
+      LFGNFT.transferFrom(accounts[1], accounts[2], account1TokenIds[0], {from: accounts[1]})
+    ).to.be.revertedWith("from address is blacklisted");
   });
 });
