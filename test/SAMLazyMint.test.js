@@ -40,7 +40,7 @@ describe("SAMLazyMint", function () {
 
       UserBlackList = await UserBlackListArt.new(owner);
 
-      LFGNFT = await LFGNFTArt.new(owner, UserBlackList.address);
+      LFGNFT1155 = await LFGNFT1155Art.new(owner, UserBlackList.address, "");
 
       SAMConfig = await SAMConfigArt.new(owner, revenueAddress, burnAddress);
 
@@ -49,6 +49,9 @@ describe("SAMLazyMint", function () {
        // 2.5% fee, 50% of the fee burn, 10% royalties fee.
       await SAMLazyMint.updateFeeRate(250, {from: owner});
       await SAMConfig.setRoyaltiesFeeRate(1000, {from: owner});
+
+      BurnToken = await BurnTokenArt.new(owner, LFGToken.address, burnAddress1);
+      await BurnToken.setOperator(SAMLazyMint.address, true, {from: owner});
     } catch (err) {
       console.log(err);
     }
