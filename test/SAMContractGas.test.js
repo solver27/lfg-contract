@@ -2,6 +2,7 @@ const {assert, expect} = require("chai");
 const hre = require("hardhat");
 const {web3} = require("hardhat");
 const LFGFireNFTArt = hre.artifacts.require("LFGFireNFT");
+const UserBlackListArt = hre.artifacts.require("UserBlackList");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
 const SAMConfigArt = hre.artifacts.require("SAMConfig");
@@ -21,6 +22,7 @@ async function getBiddingOfAddr(samContract, addr) {
 }
 
 describe("SAMContractGas", function () {
+  let UserBlackList = null;
   let LFGNFT = null;
   let LFGFireNFT = null;
   let NftWhiteList = null;
@@ -45,7 +47,9 @@ describe("SAMContractGas", function () {
         revenueAddress,
       ] = await web3.eth.getAccounts();
 
-      LFGNFT = await LFGNFTArt.new(owner);
+      UserBlackList = await UserBlackListArt.new(owner);
+
+      LFGNFT = await LFGNFTArt.new(owner, UserBlackList.address);
 
       LFGFireNFT = await LFGFireNFTArt.new();
 
@@ -82,8 +86,8 @@ describe("SAMContractGas", function () {
     let acc1Balance = await web3.eth.getBalance(accounts[2]);
     console.log("Initial balance of account 1 ", acc1Balance.toString());
 
-    await LFGNFT.mint(accounts[2], 1, {from: owner});
-    await LFGNFT.mint(accounts[2], 2, {from: owner});
+    await LFGNFT.mint(accounts[2], 1, {from: accounts[2]});
+    await LFGNFT.mint(accounts[2], 2, {from: accounts[2]});
 
     supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
@@ -151,7 +155,7 @@ describe("SAMContractGas", function () {
 
     balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001993054885711000000);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001992311885711000000);
 
     let account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
@@ -282,7 +286,7 @@ describe("SAMContractGas", function () {
 
     let balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10003492409713709000000);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10003491009713709000000);
 
     // Account 3 bid failed, should be auto refunded
     let account3Tokens = await SAMContractGas.addrTokens(accounts[3]);
@@ -291,7 +295,7 @@ describe("SAMContractGas", function () {
 
     let balanceOfAccount3 = await web3.eth.getBalance(accounts[3]);
     console.log("Balance of account 3 ", balanceOfAccount3.toString());
-    assert.isAbove(parseInt(balanceOfAccount3.toString()), 9999986400000000000000);
+    assert.isAbove(parseInt(balanceOfAccount3.toString()), 9999986000000000000000);
 
     let revenueAmount = await SAMContractGas.revenueAmount();
     assert.equal(revenueAmount.toString(), "87500000000000000");
@@ -301,8 +305,8 @@ describe("SAMContractGas", function () {
     let supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    await LFGNFT.mint(accounts[2], 3, {from: owner});
-    await LFGNFT.mint(accounts[2], 4, {from: owner});
+    await LFGNFT.mint(accounts[2], 3, {from: accounts[2]});
+    await LFGNFT.mint(accounts[2], 4, {from: accounts[2]});
 
     supply = await LFGNFT.totalSupply();
     console.log("supply ", supply.toString());
@@ -407,7 +411,7 @@ describe("SAMContractGas", function () {
 
     let balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10004491379089700917438);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10004490379089700917438);
 
     listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);

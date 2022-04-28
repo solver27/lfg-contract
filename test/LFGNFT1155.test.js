@@ -2,9 +2,11 @@ const {assert, expect} = require("chai");
 const hre = require("hardhat");
 const {web3} = require("hardhat");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
+const UserBlackListArt = hre.artifacts.require("UserBlackList");
 
 describe("LFGNFT1155", function () {
   let LFGNFT1155 = null;
+  let UserBlackList = null;
   let accounts = ["", "", "", ""],
     owner;
 
@@ -13,7 +15,10 @@ describe("LFGNFT1155", function () {
   before("Deploy contract", async function () {
     try {
       [accounts[0], accounts[1], accounts[2], accounts[3], owner] = await web3.eth.getAccounts();
-      LFGNFT1155 = await LFGNFT1155Art.new(owner, baseURI);
+
+      UserBlackList = await UserBlackListArt.new(owner);
+
+      LFGNFT1155 = await LFGNFT1155Art.new(owner, UserBlackList.address, baseURI);
     } catch (err) {
       console.log(err);
     }
@@ -83,7 +88,6 @@ describe("LFGNFT1155", function () {
     // let account1TokenIds = await LFGNFT1155.tokensOfOwner(accounts[1]);
     // console.log("tokenIds of account1 ", JSON.stringify(account1TokenIds));
 
-    
     await expect(LFGNFT1155.setRoyalty(id, accounts[1], 1000, {from: accounts[2]})).to.be.revertedWith(
       "NFT: Invalid creator"
     );
@@ -131,5 +135,36 @@ describe("LFGNFT1155", function () {
         from: accounts[1],
       })
     ).to.be.revertedWith("Collection already created");
+  });
+
+  it("test blacklist", async function () {
+    await UserBlackList.setUserBlackList([accounts[1]], [true], {from: owner});
+
+    const collectionTag = web3.utils.asciiToHex("CryoptKitty");
+    const collectionTagNew = web3.utils.asciiToHex("CryoptKitty1");
+
+    await expect(
+      LFGNFT1155.createCollection(collectionTagNew, {
+        from: accounts[1],
+      })
+    ).to.be.revertedWith("User is blacklisted");
+
+    await expect(
+      LFGNFT1155.create(accounts[1], 10, collectionTag, {
+        from: accounts[1],
+      })
+    ).to.be.revertedWith("User is blacklisted");
+
+    await expect(
+      LFGNFT1155.mint(accounts[2], 1, 10, [], {
+        from: accounts[1],
+      })
+    ).to.be.revertedWith("User is blacklisted");
+
+    await expect(
+      LFGNFT1155.mintBatch(accounts[2], [1], [10], [], {
+        from: accounts[1],
+      })
+    ).to.be.revertedWith("User is blacklisted");
   });
 });

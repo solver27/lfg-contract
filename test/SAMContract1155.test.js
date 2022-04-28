@@ -2,6 +2,7 @@ const {assert, expect} = require("chai");
 const hre = require("hardhat");
 const {web3} = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
+const UserBlackListArt = hre.artifacts.require("UserBlackList");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
 const NftWhiteListArt = hre.artifacts.require("NftWhiteList");
 const SAMConfigArt = hre.artifacts.require("SAMConfig");
@@ -10,6 +11,7 @@ const BurnTokenArt = hre.artifacts.require("BurnToken");
 
 describe("SAMContract1155", function () {
   let LFGToken = null;
+  let UserBlackList = null;
   let LFGNFT1155 = null;
   let NftWhiteList = null;
   let SAMConfig = null;
@@ -39,7 +41,9 @@ describe("SAMContract1155", function () {
 
       LFGToken = await LFGTokenArt.new("LFG Token", "LFG", "1000000000000000000000000000", owner);
 
-      LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
+      UserBlackList = await UserBlackListArt.new(owner);
+
+      LFGNFT1155 = await LFGNFT1155Art.new(owner, UserBlackList.address, "");
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
