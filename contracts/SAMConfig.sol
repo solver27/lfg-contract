@@ -125,4 +125,8 @@ contract SAMConfig is Ownable, ISAMConfig {
     function getMaxDuration() external view override returns (uint256) {
         return maxDuration;
     }
+
+    function getFeeRateBase() external pure override returns (uint256) {
+        return FEE_RATE_BASE;
+    }
 }

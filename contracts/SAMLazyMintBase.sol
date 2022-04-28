@@ -10,6 +10,7 @@ import "./LFGNFT1155.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "./interfaces/ISAMConfig.sol";
 
 /// The contract is abstract so it cannnot be deployed.
 abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
@@ -81,7 +82,6 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
     uint256 public operationNonce;
 
     uint256 public constant MAXIMUM_FEE_RATE = 5000;
-    uint256 public constant FEE_RATE_BASE = 10000;
     uint256 public feeRate;
 
     // maximum charge 50% royalty fee
@@ -93,11 +93,10 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
     // The hosting NFT contract
     LFGNFT1155 public nftContract;
 
-    // The revenue address
-    address public revenueAddress;
-
     // Total revenue amount
     uint256 public revenueAmount;
+
+    ISAMConfig public samConfig;
 
     /*
      * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).

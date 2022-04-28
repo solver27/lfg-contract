@@ -4,6 +4,7 @@ const { web3 } = require("hardhat");
 const LFGTokenArt = hre.artifacts.require("LFGToken");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
+const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMLazyMintArt = hre.artifacts.require("SAMLazyMint");
 
 describe("SAMLazyMint", function () {
@@ -44,17 +45,13 @@ describe("SAMLazyMint", function () {
 
       LFGNFT1155 = await LFGNFT1155Art.new(owner, "");
 
-      SAMLazyMint = await SAMLazyMintArt.new(
-        owner,
-        LFGToken.address,
-        LFGNFT1155.address,
-        burnAddress,
-        revenueAddress
-      );
+      SAMConfig = await SAMConfigArt.new(owner, revenueAddress, burnAddress);
 
-      // 2.5% fee, 50% of the fee burn
-      await SAMLazyMint.updateFeeRate(250, { from: owner });
-      await SAMLazyMint.updateBurnFeeRate(5000, { from: owner });
+      SAMLazyMint = await SAMLazyMintArt.new(owner, LFGToken.address, LFGNFT1155.address, SAMConfig.address);
+
+       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
+      await SAMLazyMint.updateFeeRate(250, {from: owner});
+      await SAMConfig.setRoyaltiesFeeRate(1000, {from: owner});
     } catch (err) {
       console.log(err);
     }

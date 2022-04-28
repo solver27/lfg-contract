@@ -10,4 +10,5 @@ interface ISAMConfig {
     function getFeeBurnRate() external view returns (uint256);
     function getMinDuration() external view returns (uint256);
     function getMaxDuration() external view returns (uint256);
+    function getFeeRateBase() external view returns (uint256);
 }

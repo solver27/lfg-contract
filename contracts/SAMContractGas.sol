@@ -59,7 +59,7 @@ contract SAMContractGas is SAMContractBase {
     function buyNow(bytes32 listingId) external payable nonReentrant {
         uint256 price = getPrice(listingId);
         // For BNB, the value need to larger then the price + fee
-        uint256 fee = (price * feeRate) / FEE_RATE_BASE;
+        uint256 fee = (price * feeRate) / samConfig.getFeeRateBase();
         require(msg.value >= price + fee, "Not enough funds to buy");
 
         _buyNow(listingId, price);
@@ -67,7 +67,7 @@ contract SAMContractGas is SAMContractBase {
 
     /// Check base function definition
     function _processFee(uint256 price) internal override {
-        uint256 fee = (price * feeRate) / FEE_RATE_BASE;
+        uint256 fee = (price * feeRate) / samConfig.getFeeRateBase();
         payable(samConfig.getRevenueAddress()).transfer(fee);
         revenueAmount += fee;
     }
@@ -105,7 +105,7 @@ contract SAMContractGas is SAMContractBase {
             "The bidding period haven't complete"
         );
 
-        uint256 fee = (bid.price * feeRate) / FEE_RATE_BASE;
+        uint256 fee = (bid.price * feeRate) / samConfig.getFeeRateBase();
         require(msg.value >= fee, "Not enough gas to pay the fee");
 
         _claimNft(biddingId, bid, lst);
