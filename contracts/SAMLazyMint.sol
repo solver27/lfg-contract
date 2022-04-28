@@ -26,16 +26,10 @@ contract SAMLazyMint is SAMLazyMintBase {
         IERC20 _lfgToken,
         LFGNFT1155 _nftContract,
         ISAMConfig _samConfig
-    ) {
-        require(_owner != address(0), "Invalid owner address");
-        _transferOwnership(_owner);
+    ) SAMLazyMintBase(_owner, _nftContract, _samConfig) {
         lfgToken = _lfgToken;
-        nftContract = _nftContract;
-
         feeRate = 125; // 1.25%
-        samConfig = _samConfig;
     }
-
 
     /*
      * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
