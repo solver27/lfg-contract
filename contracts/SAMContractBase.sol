@@ -102,6 +102,8 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     // maximum charge 50% royalty fee
     uint256 public constant MAXIMUM_ROYALTIES_FEE_RATE = 5000;
 
+    uint256 public constant FEE_RATE_BASE = 10000;
+
     // The nft whitelist contract
     INftWhiteList public nftWhiteListContract;
 
@@ -271,7 +273,7 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
         uint256 netSaleValue = grossSaleValue - royaltiesAmount;
         // Transfer royalties to rightholder if not zero
         if (royaltiesAmount > 0) {
-            uint256 royaltyFee = (royaltiesAmount * samConfig.getRoyalityFeeRate()) / samConfig.getFeeRateBase();
+            uint256 royaltyFee = (royaltiesAmount * samConfig.getRoyalityFeeRate()) / FEE_RATE_BASE;
             if (royaltyFee > 0) {
                 _transferToken(msg.sender, samConfig.getRevenueAddress(), royaltyFee);
                 revenueAmount += royaltyFee;
