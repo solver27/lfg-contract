@@ -107,8 +107,8 @@ contract SAMLazyMint is SAMLazyMintBase {
     }
 
     function _processFee(uint256 price) internal override {
-        uint256 fee = (price * feeRate) / samConfig.getFeeRateBase();
-        uint256 feeToBurn = (fee * samConfig.getFeeBurnRate()) / samConfig.getFeeRateBase();
+        uint256 fee = (price * feeRate) / FEE_RATE_BASE;
+        uint256 feeToBurn = (fee * samConfig.getFeeBurnRate()) / FEE_RATE_BASE;
         uint256 revenue = fee - feeToBurn;
         SafeERC20.safeTransferFrom(lfgToken, msg.sender, samConfig.getRevenueAddress(), revenue);
         revenueAmount += revenue;
