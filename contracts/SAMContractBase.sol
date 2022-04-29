@@ -97,7 +97,6 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
     uint256 public operationNonce;
 
     uint256 public constant MAXIMUM_FEE_RATE = 5000;
-    uint256 public constant FEE_RATE_BASE = 10000;
     uint256 public feeRate;
 
     // maximum charge 50% royalty fee
@@ -115,7 +114,11 @@ abstract contract SAMContractBase is Ownable, ReentrancyGuard, IERC721Receiver {
 
     uint256 public totalEscrowAmount;
 
-    constructor(address _owner, INftWhiteList _nftWhiteList, ISAMConfig _samConfig) {
+    constructor(
+        address _owner, 
+        INftWhiteList _nftWhiteList, 
+        ISAMConfig _samConfig
+    ) {
         require(_owner != address(0), "Invalid owner address");
         _transferOwnership(_owner);
         nftWhiteListContract = _nftWhiteList;

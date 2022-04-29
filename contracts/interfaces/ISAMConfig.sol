@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+uint256 constant FEE_RATE_BASE = 10000;
+
 interface ISAMConfig {
     function getBurnAddress() external view returns (address);
     function getRevenueAddress() external view returns (address);

@@ -14,12 +14,6 @@ import "./SAMLazyMintBase.sol";
 contract SAMLazyMint is SAMLazyMintBase {
     uint256 public constant MAXIMUM_FEE_BURN_RATE = 10000; // maximum burn 100% of the fee
 
-    // The rate of fee to burn
-    uint256 public feeBurnRate;
-
-    // The address to burn token
-    address public burnAddress;
-
     // The total burned token amount
     uint256 public totalBurnAmount;
 
@@ -31,30 +25,10 @@ contract SAMLazyMint is SAMLazyMintBase {
         address _owner,
         IERC20 _lfgToken,
         LFGNFT1155 _nftContract,
-        address _burnAddress,
-        address _revenueAddress
-    ) {
-        require(_owner != address(0), "Invalid owner address");
-        _transferOwnership(_owner);
+        ISAMConfig _samConfig
+    ) SAMLazyMintBase(_owner, _nftContract, _samConfig) {
         lfgToken = _lfgToken;
-        nftContract = _nftContract;
-
-        burnAddress = _burnAddress;
-        revenueAddress = _revenueAddress;
-
         feeRate = 125; // 1.25%
-        feeBurnRate = 5000; // 50%
-    }
-
-    /*
-     * @notice Update the burn fee rate from the burn amount
-     * @dev Only callable by owner.
-     * @param _fee: the fee rate
-     * @param _burnRate: the burn fee rate
-     */
-    function updateBurnFeeRate(uint256 _feeBurnRate) external onlyOwner {
-        require(_feeBurnRate <= FEE_RATE_BASE, "Invalid fee burn rate");
-        feeBurnRate = _feeBurnRate;
     }
 
     /*
@@ -134,12 +108,12 @@ contract SAMLazyMint is SAMLazyMintBase {
 
     function _processFee(uint256 price) internal override {
         uint256 fee = (price * feeRate) / FEE_RATE_BASE;
-        uint256 feeToBurn = (fee * feeBurnRate) / FEE_RATE_BASE;
+        uint256 feeToBurn = (fee * samConfig.getFeeBurnRate()) / FEE_RATE_BASE;
         uint256 revenue = fee - feeToBurn;
-        SafeERC20.safeTransferFrom(lfgToken, msg.sender, revenueAddress, revenue);
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, samConfig.getRevenueAddress(), revenue);
         revenueAmount += revenue;
 
-        SafeERC20.safeTransferFrom(lfgToken, msg.sender, burnAddress, feeToBurn);
+        SafeERC20.safeTransferFrom(lfgToken, msg.sender, samConfig.getBurnAddress(), feeToBurn);
         totalBurnAmount += feeToBurn;
     }
 
@@ -160,21 +134,5 @@ contract SAMLazyMint is SAMLazyMintBase {
         SafeERC20.safeTransfer(lfgToken, to, _amount);
         addrTokens[from] -= _amount;
         totalEscrowAmount -= _amount;
-    }
-
-    /*
-     * @notice Set the burn and revenue address, combine into one function to reduece contract size.
-     * @dev Only callable by owner.
-     * @param _burnAddress: the burn address
-     * @param _revenueAddress: the revenue address
-     */
-    function setBurnAndRevenueAddress(address _burnAddress, address _revenueAddress)
-        external
-        onlyOwner
-    {
-        require(_revenueAddress != address(0), "Invalid revenue address");
-
-        burnAddress = _burnAddress;
-        revenueAddress = _revenueAddress;
     }
 }

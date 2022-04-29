@@ -9,8 +9,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/ISAMConfig.sol";
 
 contract SAMConfig is Ownable, ISAMConfig {
-    uint256 public constant FEE_RATE_BASE = 10000;
-
     uint256 public constant MAXIMUM_ROYALTIES_FEE_RATE = 5000;
 
     // The royalties fee rate

@@ -5,6 +5,7 @@ const LFGTokenArt = hre.artifacts.require("LFGToken");
 const UserBlackListArt = hre.artifacts.require("UserBlackList");
 const LFGNFTArt = hre.artifacts.require("LFGNFT");
 const LFGNFT1155Art = hre.artifacts.require("LFGNFT1155");
+const SAMConfigArt = hre.artifacts.require("SAMConfig");
 const SAMLazyMintArt = hre.artifacts.require("SAMLazyMint");
 
 describe("SAMLazyMint", function () {
@@ -39,15 +40,18 @@ describe("SAMLazyMint", function () {
 
       UserBlackList = await UserBlackListArt.new(owner);
 
-      LFGNFT = await LFGNFTArt.new(owner, UserBlackList.address);
-
       LFGNFT1155 = await LFGNFT1155Art.new(owner, UserBlackList.address, "");
 
-      SAMLazyMint = await SAMLazyMintArt.new(owner, LFGToken.address, LFGNFT1155.address, burnAddress, revenueAddress);
+      SAMConfig = await SAMConfigArt.new(owner, revenueAddress, burnAddress);
 
-      // 2.5% fee, 50% of the fee burn
+      SAMLazyMint = await SAMLazyMintArt.new(owner, LFGToken.address, LFGNFT1155.address, SAMConfig.address);
+
+       // 2.5% fee, 50% of the fee burn, 10% royalties fee.
       await SAMLazyMint.updateFeeRate(250, {from: owner});
-      await SAMLazyMint.updateBurnFeeRate(5000, {from: owner});
+      await SAMConfig.setRoyaltiesFeeRate(1000, {from: owner});
+
+      BurnToken = await BurnTokenArt.new(owner, LFGToken.address, burnAddress1);
+      await BurnToken.setOperator(SAMLazyMint.address, true, {from: owner});
     } catch (err) {
       console.log(err);
     }
