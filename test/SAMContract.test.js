@@ -131,8 +131,8 @@ describe("SAMContract", function () {
     const testDepositAmount = "100000000000000000000000";
     await LFGToken.transfer(accounts[1], testDepositAmount, {from: owner});
 
-    let balance = await LFGToken.balanceOf(accounts[1]);
-    console.log("account 1 balance ", balance.toString());
+    let balanceOfAccount1 = await LFGToken.balanceOf(accounts[1]);
+    console.log("account 1 balance ", balanceOfAccount1.toString());
 
     await LFGToken.approve(SAMContract.address, testDepositAmount, {
       from: accounts[1],
@@ -156,6 +156,9 @@ describe("SAMContract", function () {
 
     let balanceOfAccount2 = await LFGToken.balanceOf(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
+
+    balanceOfAccount1 = await LFGToken.balanceOf(accounts[1]);
+    assert.equal(balanceOfAccount1.toString(), "99999999999999979500000");
 
     const account1Tokens = await SAMContract.addrTokens(accounts[1]);
     console.log("Escrow tokens of account 1 ", JSON.stringify(account1Tokens));
