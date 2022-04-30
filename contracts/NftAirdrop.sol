@@ -129,8 +129,9 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
         require(whitelistPools[msg.sender].active, "User is not in whitelist");
         require(!whitelistPools[msg.sender].claimed, "User already claimed NFT");
 
-        lfgNft.safeTransferFrom(address(this), msg.sender, tokenId);
         whitelistPools[msg.sender].claimed = true;
+
+        lfgNft.safeTransferFrom(address(this), msg.sender, tokenId);
 
         emit ClaimDistribution(msg.sender, tokenId);
         return true;
