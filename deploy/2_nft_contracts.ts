@@ -7,20 +7,33 @@ if (!process.env.MULTISIG_PUBKEY)
   throw new Error("MULTISIG_PUBKEY missing from .env file");
 
 async function deploy() {
-  // LFG token contract
-  const LFGToken: ContractFactory = await ethers.getContractFactory("LFGToken");
-  const lfgToken: Contract = await LFGToken.deploy(
-    "LFG Token",
-    "LFG",
-    "1000000000000000000000000000",
+  // // LFG token contract
+  // const LFGToken: ContractFactory = await ethers.getContractFactory("LFGToken");
+  // const lfgToken: Contract = await LFGToken.deploy(
+  //   "LFG Token",
+  //   "LFG",
+  //   "1000000000000000000000000000",
+  //   process.env.MULTISIG_PUBKEY
+  // );
+  // await lfgToken.deployed();
+  // console.log("LFGToken deployed to: ", lfgToken.address);
+
+  // UserBlackList contract
+  const UserBlackList: ContractFactory = await ethers.getContractFactory(
+    "UserBlackList"
+  );
+  const userBlackList: Contract = await UserBlackList.deploy(
     process.env.MULTISIG_PUBKEY
   );
-  await lfgToken.deployed();
-  console.log("LFGToken deployed to: ", lfgToken.address);
+  await userBlackList.deployed();
+  console.log("UserBlackList deployed to: ", userBlackList.address);
 
   // LFGNFT contract
   const LFGNFT: ContractFactory = await ethers.getContractFactory("LFGNFT");
-  const lfgNft: Contract = await LFGNFT.deploy(process.env.MULTISIG_PUBKEY);
+  const lfgNft: Contract = await LFGNFT.deploy(
+    process.env.MULTISIG_PUBKEY,
+    userBlackList.address
+  );
   await lfgNft.deployed();
   console.log("LFGNFT deployed to: ", lfgNft.address);
 
@@ -30,6 +43,7 @@ async function deploy() {
   );
   const lfgNft1155: Contract = await LFGNFT1155.deploy(
     process.env.MULTISIG_PUBKEY,
+    userBlackList.address,
     ""
   );
   await lfgNft1155.deployed();
