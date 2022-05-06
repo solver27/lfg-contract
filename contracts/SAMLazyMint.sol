@@ -19,8 +19,6 @@ contract SAMLazyMint is SAMLazyMintBase {
 
     IERC20 public lfgToken;
 
-    mapping(address => uint256) public addrTokens;
-
     constructor(
         address _owner,
         IERC20 _lfgToken,
@@ -29,57 +27,6 @@ contract SAMLazyMint is SAMLazyMintBase {
     ) SAMLazyMintBase(_owner, _nftContract, _samConfig) {
         lfgToken = _lfgToken;
         feeRate = 125; // 1.25%
-    }
-
-    /*
-     * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
-     * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
-     */
-    function addListing(
-        bytes calldata _collectionTag,
-        SellMode _sellMode,
-        uint256 _price,
-        uint256 _startTime,
-        uint256 _duration,
-        uint256 _discountInterval,
-        uint256 _discountAmount
-    ) external nonReentrant {
-        _addListing(
-            _collectionTag,
-            _sellMode,
-            _price,
-            _startTime,
-            _duration,
-            _discountInterval,
-            _discountAmount
-        );
-    }
-
-    /*
-     * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
-     * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
-     */
-    function addCollectionListing(
-        bytes calldata _collectionTag,
-        uint256 _collectionCount,
-        SellMode _sellMode,
-        uint256 _price,
-        uint256 _startTime,
-        uint256 _duration,
-        uint256 _discountInterval,
-        uint256 _discountAmount
-    ) external nonReentrant {
-        for (uint256 i = 0; i < _collectionCount; ++i) {
-            _addListing(
-                _collectionTag,
-                _sellMode,
-                _price,
-                _startTime,
-                _duration,
-                _discountInterval,
-                _discountAmount
-            );
-        }
     }
 
     /*

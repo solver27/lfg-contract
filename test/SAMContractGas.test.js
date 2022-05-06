@@ -127,7 +127,7 @@ describe("SAMContractGas", function () {
     await SAMContractGas.buyNow(listingId, {
       from: accounts[1],
       value: hre.ethers.utils.parseEther("2.05"),
-    }); // 20500000
+    });
 
     await hre.network.provider.send("evm_mine");
 

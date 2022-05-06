@@ -80,6 +80,8 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
 
     mapping(address => bytes32[]) public addrBiddingIds; // The mapping of the bidding of address
 
+    mapping(address => uint256) public addrTokens;
+
     uint256 public operationNonce;
 
     uint256 public constant MAXIMUM_FEE_RATE = 5000;
@@ -110,6 +112,57 @@ abstract contract SAMLazyMintBase is Ownable, ReentrancyGuard {
 
         feeRate = 125; // 1.25%
         samConfig = _samConfig;
+    }
+
+    /*
+     * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
+     * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
+     */
+    function addListing(
+        bytes calldata _collectionTag,
+        SellMode _sellMode,
+        uint256 _price,
+        uint256 _startTime,
+        uint256 _duration,
+        uint256 _discountInterval,
+        uint256 _discountAmount
+    ) external nonReentrant {
+        _addListing(
+            _collectionTag,
+            _sellMode,
+            _price,
+            _startTime,
+            _duration,
+            _discountInterval,
+            _discountAmount
+        );
+    }
+
+    /*
+     * @notice Add NFT to marketplace, Support auction(Price increasing), buyNow (Fixed price) and dutch auction (Price decreasing).
+     * @dev Only the token owner can call, because need to transfer the ownership to marketplace contract.
+     */
+    function addCollectionListing(
+        bytes calldata _collectionTag,
+        uint256 _collectionCount,
+        SellMode _sellMode,
+        uint256 _price,
+        uint256 _startTime,
+        uint256 _duration,
+        uint256 _discountInterval,
+        uint256 _discountAmount
+    ) external nonReentrant {
+        for (uint256 i = 0; i < _collectionCount; ++i) {
+            _addListing(
+                _collectionTag,
+                _sellMode,
+                _price,
+                _startTime,
+                _duration,
+                _discountInterval,
+                _discountAmount
+            );
+        }
     }
 
     /*
