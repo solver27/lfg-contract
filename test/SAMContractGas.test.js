@@ -51,7 +51,7 @@ describe("SAMContractGas", function () {
 
       LFGNFT = await LFGNFTArt.new(owner, UserBlackList.address);
 
-      LFGFireNFT = await LFGFireNFTArt.new();
+      LFGFireNFT = await LFGFireNFTArt.new(owner);
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
@@ -155,7 +155,7 @@ describe("SAMContractGas", function () {
 
     balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001992111885711000000);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10001990011885711000000);
 
     let account2Tokens = await SAMContractGas.addrTokens(accounts[2]);
     console.log("Escrow tokens of account 2 ", JSON.stringify(account2Tokens));
@@ -250,7 +250,7 @@ describe("SAMContractGas", function () {
     assert.equal(account4Tokens.toString(), "0");
 
     balanceOfAccount4 = await web3.eth.getBalance(accounts[4]);
-    assert.isAbove(parseInt(balanceOfAccount4.toString()), 9999999000078170000000);
+    assert.isAbove(parseInt(balanceOfAccount4.toString()), 9999997000078170000000);
 
     const biddingIds = await SAMContractGas.biddingOfAddr(accounts[3]);
 
@@ -286,7 +286,7 @@ describe("SAMContractGas", function () {
 
     let balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10003491009713709000000);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10003490009713709000000);
 
     // Account 3 bid failed, should be auto refunded
     let account3Tokens = await SAMContractGas.addrTokens(accounts[3]);
@@ -411,7 +411,7 @@ describe("SAMContractGas", function () {
 
     let balanceOfAccount2 = await web3.eth.getBalance(accounts[2]);
     console.log("Balance of account 2 ", balanceOfAccount2.toString());
-    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10004490379089700917438);
+    assert.isAbove(parseInt(balanceOfAccount2.toString()), 10004480379089700917438);
 
     listingResult = await SAMContractGas.listingOfAddr(accounts[2]);
     assert.equal(listingResult.length, 0);
@@ -510,7 +510,7 @@ describe("SAMContractGas", function () {
     let supply = await LFGFireNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    await LFGFireNFT.adminMint(2, accounts[2], {from: accounts[0]});
+    await LFGFireNFT.adminMint(2, accounts[2], {from: owner});
 
     supply = await LFGFireNFT.totalSupply();
     console.log("supply ", supply.toString());

@@ -24,7 +24,10 @@ contract LFGFireNFT is ILFGFireNFT, ERC721Enumerable, Ownable {
         _;
     }
 
-    constructor() ERC721("LFGFireNFT", "LFGFireNFT") {}
+    constructor(address _owner) ERC721("LFGFireNFT", "LFGFireNFT") {
+        require(_owner != address(0), "Invalid owner address");
+        _transferOwnership(_owner);
+    }
 
     /**************************
      ***** MINT FUNCTIONS *****

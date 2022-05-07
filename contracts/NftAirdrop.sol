@@ -8,7 +8,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
@@ -62,7 +61,10 @@ contract NftAirdrop is Ownable, ReentrancyGuard, IERC721Receiver {
 
     IERC721 public lfgNft;
 
-    constructor(IERC721 _nft) {
+    constructor(address _owner, IERC721 _nft) {
+        require(_owner != address(0), "Invalid owner address");
+        _transferOwnership(_owner);
+
         lfgNft = _nft;
     }
 

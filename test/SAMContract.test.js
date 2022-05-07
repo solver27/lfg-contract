@@ -47,7 +47,7 @@ describe("SAMContract", function () {
 
       LFGNFT = await LFGNFTArt.new(owner, UserBlackList.address);
 
-      LFGFireNFT = await LFGFireNFTArt.new();
+      LFGFireNFT = await LFGFireNFTArt.new(owner);
 
       NftWhiteList = await NftWhiteListArt.new(owner);
 
@@ -533,7 +533,7 @@ describe("SAMContract", function () {
     let supply = await LFGFireNFT.totalSupply();
     console.log("supply ", supply.toString());
 
-    await LFGFireNFT.adminMint(2, accounts[2], {from: accounts[0]});
+    await LFGFireNFT.adminMint(2, accounts[2], {from: owner});
 
     supply = await LFGFireNFT.totalSupply();
     console.log("supply ", supply.toString());
