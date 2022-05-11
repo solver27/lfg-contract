@@ -135,6 +135,11 @@ contract SAMContract is SAMContractBase {
         totalEscrowAmount -= _amount;
     }
 
+    /**
+     * @notice Set the burn token contract contract address
+     * @param _burnTokenContract: the burn token contract address
+     * @dev This function is only callable by owner.
+     */
     function setBurnTokenContract(IBurnToken _burnTokenContract) external onlyOwner {
         burnTokenContract = _burnTokenContract;
     }

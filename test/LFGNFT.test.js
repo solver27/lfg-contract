@@ -55,12 +55,20 @@ describe("LFGNFT", function () {
   });
 
   it("test admin mint", async function () {
-    await expect(LFGNFT.adminMint(100, accounts[2], {from: accounts[2]})).to.be.revertedWith(
+    const tokenURIs = ["ipfs://a", "ipfs://b", "ipfs://c"];
+    await expect(LFGNFT.adminMint(tokenURIs, accounts[2], {from: accounts[2]})).to.be.revertedWith(
       "Ownable: caller is not the owner"
     );
-    let adminMintTx = await LFGNFT.adminMint(100, accounts[2], {from: owner});
+    let adminMintTx = await LFGNFT.adminMint(tokenURIs, accounts[2], {from: owner});
+    console.log("adminMintTx: ", JSON.stringify(adminMintTx));
     const nftBalance = await LFGNFT.balanceOf(accounts[2]);
-    assert.equal(nftBalance.toString(), "100");
+    assert.equal(nftBalance.toString(), 3);
+    const account2TokenIds = await LFGNFT.tokensOfOwner(accounts[2]);
+    for (let index in account2TokenIds) {
+      const tokenURI = await LFGNFT.tokenURI(account2TokenIds[index]);
+      console.log("Token id ", account2TokenIds[index].toString(), " URI ", tokenURI);
+      assert.equal(tokenURI, tokenURIs[index]);
+    }
   });
 
   it("test blacklist", async function () {
