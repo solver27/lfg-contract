@@ -197,7 +197,7 @@ describe("SAMContract1155", function () {
         1, // Auction
         "20000000",
         latestBlock["timestamp"] + 1,
-        3600 * 24 * 8, // The duration too long
+        3600 * 24 * 15, // The duration too long
         0,
         0,
         {from: accounts[2]}

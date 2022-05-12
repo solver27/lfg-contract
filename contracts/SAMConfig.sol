@@ -30,7 +30,7 @@ contract SAMConfig is Ownable, ISAMConfig {
     uint256 public minDuration = 1 days;
 
     // The maximum duration
-    uint256 public maxDuration = 7 days;
+    uint256 public maxDuration = 14 days;
 
     event UpdatedRoyaltiesFeeRate(uint256 rate);
     event UpdatedFireNftContractAddress(address addr);
