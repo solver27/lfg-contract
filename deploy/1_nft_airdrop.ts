@@ -3,26 +3,41 @@ import "@nomiclabs/hardhat-ethers";
 import { Contract, ContractFactory } from "ethers";
 import { ethers } from "hardhat"; // Optional (for `node <script>`)
 
+if (!process.env.MULTISIG_PUBKEY)
+  throw new Error("MULTISIG_PUBKEY missing from .env file");
+
 async function deploy() {
   const LFGFireNFT: ContractFactory = await ethers.getContractFactory(
     "LFGFireNFT"
   );
-  const lfgFireNft: Contract = await LFGFireNFT.deploy();
+  const lfgFireNft: Contract = await LFGFireNFT.deploy(
+    process.env.MULTISIG_PUBKEY
+  );
   await lfgFireNft.deployed();
   console.log("lfgFireNft deployed to: ", lfgFireNft.address);
-
-  const LFGNFT: ContractFactory = await ethers.getContractFactory("LFGNFT");
-  const lfgNft: Contract = await LFGNFT.deploy();
-  await lfgNft.deployed();
-  console.log("lfgNft deployed to: ", lfgNft.address);
 
   const NftAirdrop: ContractFactory = await ethers.getContractFactory(
     "NftAirdrop"
   );
 
-  const nftAirdrop: Contract = await NftAirdrop.deploy(lfgFireNft.address);
+  const nftAirdrop: Contract = await NftAirdrop.deploy(
+    process.env.MULTISIG_PUBKEY,
+    lfgFireNft.address
+  );
   await nftAirdrop.deployed();
-  console.log("nftAirdrop deployed to: ", nftAirdrop.address);
+  console.log("NftAirdrop deployed to: ", nftAirdrop.address);
+
+  // NFT distribute
+  const NftDistribute: ContractFactory = await ethers.getContractFactory(
+    "NftDistribute"
+  );
+
+  const nftDistribute: Contract = await NftDistribute.deploy(
+    process.env.MULTISIG_PUBKEY,
+    lfgFireNft.address
+  );
+  await nftDistribute.deployed();
+  console.log("NftDistribute deployed to: ", nftDistribute.address);
 }
 
 async function main(): Promise<void> {
