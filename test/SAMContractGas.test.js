@@ -250,7 +250,7 @@ describe("SAMContractGas", function () {
     assert.equal(account4Tokens.toString(), "0");
 
     balanceOfAccount4 = await web3.eth.getBalance(accounts[4]);
-    assert.isAbove(parseInt(balanceOfAccount4.toString()), 9999997000078170000000);
+    assert.isAbove(parseInt(balanceOfAccount4.toString()), 9999955000078170000000);
 
     const biddingIds = await SAMContractGas.biddingOfAddr(accounts[3]);
 

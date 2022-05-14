@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 
-//** NFT Airdrop Contract */
-//** Author Xiao Shengguang : NFT Airdrop Contract 2022.1 */
+//** NFT Distribute Contract */
+//** Author Xiao Shengguang : NFT Distribute Contract 2022.1 */
 
 pragma solidity ^0.8.0;
 

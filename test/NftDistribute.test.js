@@ -44,4 +44,27 @@ describe("NftDistribute", function () {
     let claimedToken = await LFGFireNFT.tokensOfOwner(accounts[1]);
     assert.equal(claimedToken[0], "3");
   });
+
+  it("test distrubute maximum", async function () {
+    let maxDistribute = 250;
+    await LFGFireNFT.adminMint(maxDistribute, NftDistribute.address, {from: owner});
+    let tokenIds = await LFGFireNFT.tokensOfOwner(NftDistribute.address);
+    console.log("Tokens of distribute contract: ", JSON.stringify(tokenIds));
+
+    let addresses = [];
+    let tokenToDistribute = [];
+    for (let i = 0; i < maxDistribute; ++i) {
+      addresses.push(accounts[3]);
+      tokenToDistribute.push(tokenIds[i]);
+    }
+    console.log("addresses length ", addresses.length);
+    await NftDistribute.distributeNft(addresses, tokenToDistribute, {from: owner});
+
+    tokenIds = await LFGFireNFT.tokensOfOwner(NftDistribute.address);
+    console.log("Tokens of airdrop contract: ", JSON.stringify(tokenIds));
+
+    const nftBalance = await LFGFireNFT.balanceOf(accounts[3]);
+    console.log("nftBalance ", nftBalance.toString());
+    assert.equal(nftBalance.toString(), (maxDistribute + 1).toString());
+  });
 });
