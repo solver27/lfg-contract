@@ -54,7 +54,7 @@ contract LFGNFT1155 is ERC1155, IERC2981, Ownable {
     // MAX royalty percent
     uint16 public constant MAX_ROYALTY = 2000;
 
-    IUserBlackList userBlackListContract;
+    IUserBlackList public userBlackListContract;
 
     /**
      * @dev Mapping of interface ids to whether or not it's supported.

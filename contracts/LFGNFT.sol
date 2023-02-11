@@ -23,7 +23,7 @@ contract LFGNFT is ILFGNFT, ERC721Enumerable, ERC721URIStorage, IERC2981, Ownabl
     }
 
     // User Blocklist contract
-    IUserBlackList userBlackListContract;
+    IUserBlackList public userBlackListContract;
 
     // royalties
     mapping(uint256 => RoyaltyInfo) private royalties;
